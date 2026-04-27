@@ -1182,32 +1182,75 @@
             setTimeout(() => { el.style.display = 'none'; }, 900);
         }
 
+        // ── Cache Helper Functions ──────────────────────────────────────────
+        const CACHE_KEY = 'sera_data_cache_v3';
+        const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+        function getCachedData() {
+            try {
+                const raw = localStorage.getItem(CACHE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.timestamp || !parsed.datasets) return null;
+                if (Date.now() - parsed.timestamp > CACHE_TTL) {
+                    localStorage.removeItem(CACHE_KEY);
+                    return null;
+                }
+                return parsed.datasets;
+            } catch(e) { return null; }
+        }
+
+        function saveCacheToStorage() {
+            try {
+                const cacheObj = {
+                    timestamp: Date.now(),
+                    datasets: {
+                        localTMDBDataset: localTMDBDataset,
+                        localDestek1Dataset: localDestek1Dataset,
+                        localDestek2Dataset: localDestek2Dataset,
+                        localIMDBData: localIMDBData,
+                        localIMDBSearchDataset: localIMDBSearchDataset,
+                        localAnimeDataset: localAnimeDataset,
+                        localTurkishDataset: localTurkishDataset,
+                        localKDramaDataset: localKDramaDataset
+                    }
+                };
+                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheObj));
+                console.log('✓ Veriler önbelleğe kaydedildi.');
+            } catch(e) { console.warn('Cache kaydetme hatası:', e); }
+        }
+
+        function restoreFromCache(data) {
+            localTMDBDataset = data.localTMDBDataset || [];
+            localDestek1Dataset = data.localDestek1Dataset || [];
+            localDestek2Dataset = data.localDestek2Dataset || [];
+            localIMDBData = data.localIMDBData || {};
+            localIMDBSearchDataset = data.localIMDBSearchDataset || [];
+            localAnimeDataset = data.localAnimeDataset || [];
+            localTurkishDataset = data.localTurkishDataset || [];
+            localKDramaDataset = data.localKDramaDataset || [];
+            console.log('✓ Önbellekten yüklendi.');
+        }
+
      async function loadLocalDatasets() {
+            // ── 1. Cache Check ────────────────────────────────────────────
+            const cached = getCachedData();
+            if (cached) {
+                restoreFromCache(cached);
+                updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length,
+                    localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
+                    100, 'Sistem Hazır! (Önbellek) 🎬');
+                hideStartupOverlay();
+                // Background refresh for next visit (non-blocking)
+                setTimeout(() => performBackgroundRefresh(), 3000);
+                return;
+            }
+
+            // ── 2. Fresh Load ─────────────────────────────────────────────
             updateStartupUI(0, 0, 0, 3, 'Veri havuzları taranıyor...');
-            
-            // 1. Destek CSV'lerini paralel yükle
-            await Promise.all([
-                loadTMDBDestek('dizilerdestek1.csv', localDestek1Dataset, 'dizilerdestek1.csv'),
-                loadTMDBDestek('dizilerdestek2.csv', localDestek2Dataset, 'dizilerdestek2.csv')
-            ]);
 
-            // 2. Parçalanmış JSON'ları yükle (Kaç parça çıktıysa listeye ekle)
-            // Python koduyla böldüğün dosyaların isimlerini buraya yazıyoruz
-            const parts = [
-                'series_part1.json', 
-                'series_part2.json', 
-                'series_part3.json', 
-                'series_part4.json', 
-                'series_part5.json',
-                'series_part6.json',
-                'series_part7.json',
-                'series_part8.json'
-            ];
-            
-            const totalParts = parts.length;
-
-            // ── processTMDBList burada tanımlanıyor (tryLoadJSON'dan önce, scope sorunu yok) ──
-            async function processTMDBList(list, path) {
+            // Inner helper: processTMDBList (synchronous — no UI yields)
+            function processTMDBList(list) {
                 let count = 0;
                 for (let i = 0; i < list.length; i++) {
                     try {
@@ -1215,44 +1258,31 @@
                         if (!item) continue;
                         if (item.adult === true || String(item.adult).toLowerCase() === "true") continue;
                         if (!item.name && !item.original_name) continue;
-                        
                         localTMDBDataset.push(mapTMDBToShow(item));
                         count++;
-                        
-                        // Tarayıcının donmasını engelle ve sayacı canlı güncelle
-                        if (count % 3000 === 0) {
-                            let currentTotal = localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length;
-                            updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length, currentTotal, null, `TMDB Verileri İşleniyor... (${localTMDBDataset.length} Eklendi)`);
-                            await new Promise(r => setTimeout(r, 0));
-                        }
                     } catch(err) {
                         // Tek bir bozuk dizi kaydı yüzünden tüm dosyayı atlamaması için hatayı yut ve devam et
                     }
                 }
-                let currentTotal = localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length;
-                updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length, currentTotal, null, `TMDB Parçası Tamamlandı... (${localTMDBDataset.length} Eklendi)`);
                 return count;
             }
 
+            // Inner helper: tryLoadJSON (fetch + parse + process)
             async function tryLoadJSON(path) {
                 try {
                     const r = await fetch(path);
-                    if (!r.ok) { console.warn('Fetch başarısız:', path, r.status); return false; }
-                    
-                    // Content-type kontrolü: sadece kesinlikle HTML olan yanıtları reddet,
-                    // application/octet-stream veya boş content-type'a izin ver
+                    if (!r.ok) { return false; }
+
                     const ct = r.headers.get('content-type') || '';
                     if (ct.includes('text/html') && !ct.includes('json')) {
-                        console.warn('HTML yanıtı alındı, atlanıyor:', path);
                         return false;
                     }
-                    
+
                     let text;
                     try { text = await r.text(); } catch(e) { return false; }
-                    
-                    // Boş veya çok kısa yanıtı atla
+
                     if (!text || text.trim().length < 5) return false;
-                    
+
                     let json;
                     try { 
                         json = JSON.parse(text); 
@@ -1277,7 +1307,6 @@
                                     depth--;
                                     if (depth === 0 && startIndex !== -1) {
                                         let objStr = text.substring(startIndex, j + 1);
-                                        // İçeride kalmış hatalı virgülleri temizle
                                         objStr = objStr.replace(/,\s*([\}\]])/g, '$1');
                                         try { json.push(JSON.parse(objStr)); } catch(err) {}
                                         startIndex = -1;
@@ -1299,80 +1328,54 @@
                         let total = 0;
                         if (json.length > 0 && Array.isArray(json[0])) {
                             for (let chunk of json) {
-                                if (Array.isArray(chunk)) total += await processTMDBList(chunk, path);
+                                if (Array.isArray(chunk)) total += processTMDBList(chunk);
                             }
                         } else {
-                            total = await processTMDBList(json, path);
+                            total = processTMDBList(json);
                         }
                         return total > 0;
                     }
                     // Format 3: {results:[...]}
                     if (json.results && Array.isArray(json.results)) {
-                        let n = await processTMDBList(json.results, path); return n > 0;
+                        return processTMDBList(json.results) > 0;
                     }
                     // Format 4: tek obje {id:...}
                     if (json.id || json.original_name) { 
-                        await processTMDBList([json], path); 
+                        processTMDBList([json]); 
                         return true; 
                     }
                     return false;
-                } catch(e) { console.warn('JSON yüklenemedi:', path, e.message); return false; }
+                } catch(e) { return false; }
             }
 
-            // URL kaynakları: önce yerel dizin, bulunamazsa GitHub Raw
+            // Inner helper: load a single JSON part (try local paths, then GitHub)
             const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/caca1403/dizionerisistemi/master/series/parts/';
-            // Yerel yollar: index.html ile aynı klasörde "series/" alt klasörü veya doğrudan yanında
             const LOCAL_BASES = [
-                './series/parts/',   // index.html'in yanındaki /series/ klasörü
-                './',          // index.html ile aynı dizin (series_part1.json dosyalar düz yanında)
+                './series/parts/',
+                './',
             ];
 
-            for (let i = 0; i < totalParts; i++) {
-                // Yükleme ekranındaki yüzdeyi ve metni güncelle
-                let progress = 10 + Math.round((i / totalParts) * 70); 
-                updateStartupUI(
-                    localIMDBSearchDataset.length, 
-                    0, 
-                    localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length, 
-                    progress, 
-                    `Ana Veri Seti: Bölüm ${i+1}/${totalParts} indiriliyor...`
-                );
-
-                const filename = parts[i];
-                let loaded = false;
-
-                // 1. Önce yerel yolları dene (series/ klasörü, sonra düz yan yana)
+            async function loadJsonPart(filename) {
+                // Try local paths first
                 for (const base of LOCAL_BASES) {
-                    if (loaded) break;
                     try {
-                        updateStartupUI(localIMDBSearchDataset.length, 0,
-                            localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
-                            progress, `Yerel: ${filename} aranıyor...`);
-                        loaded = await tryLoadJSON(base + filename);
-                        if (loaded) console.log(`✓ Yerel yüklendi: ${base + filename}`);
-                    } catch(e) { /* bu yolda yok, sonrakini dene */ }
+                        const loaded = await tryLoadJSON(base + filename);
+                        if (loaded) { console.log(`✓ Yerel yüklendi: ${base + filename}`); return; }
+                    } catch(e) {}
                 }
-
-                // 2. Yerel bulunamazsa GitHub Raw'dan çek
-                if (!loaded) {
-                    const githubUrl = GITHUB_RAW_BASE + filename;
-                    try {
-                        updateStartupUI(localIMDBSearchDataset.length, 0,
-                            localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
-                            progress, `GitHub: ${filename} indiriliyor...`);
-                        loaded = await tryLoadJSON(githubUrl);
-                        if (loaded) console.log(`✓ GitHub'dan yüklendi: ${githubUrl}`);
-                    } catch(e) {
-                        console.error(`${filename} yüklenirken hata:`, e);
-                    }
-                }
-
-                if (!loaded) console.warn(`✗ ${filename} hiçbir kaynaktan yüklenemedi.`);
+                // Fallback to GitHub
+                try {
+                    const loaded = await tryLoadJSON(GITHUB_RAW_BASE + filename);
+                    if (loaded) { console.log(`✓ GitHub'dan yüklendi: ${GITHUB_RAW_BASE + filename}`); return; }
+                } catch(e) {}
+                console.warn(`✗ ${filename} hiçbir kaynaktan yüklenemedi.`);
             }
 
-            try {
-                const csvRes = await fetch('./imdb.csv');
-                if (csvRes.ok) {
+            // Inner helper: load imdb.csv
+            async function loadImdbCSV() {
+                try {
+                    const csvRes = await fetch('./imdb.csv');
+                    if (!csvRes.ok) return;
                     const contentType = csvRes.headers.get("content-type");
                     if (contentType && contentType.indexOf("text/html") !== -1) {
                         throw new Error("CSV yerine HTML geldi.");
@@ -1438,21 +1441,18 @@
                                     premiered: yearRaw ? yearRaw + '-01-01' : null,
                                     dataSource: 'IMDb (CSV)'
                                 });
-                                if (localIMDBSearchDataset.length % 300 === 0) {
-                                    updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length, localTMDBDataset.length,
-                                        20 + Math.min(40, (localIMDBSearchDataset.length / 2600) * 40),
-                                        `IMDb CSV okunuyor... ${localIMDBSearchDataset.length} dizi`);
-                                    await new Promise(r => setTimeout(r, 0));
-                                }
                             }
                         }
                     }
-                }
-            } catch (e) {}
+                    console.log('IMDb CSV yüklendi:', localIMDBSearchDataset.length, 'dizi');
+                } catch (e) { console.warn('imdb.csv yüklenemedi:', e); }
+            }
 
-            try {
-                const animeRes = await fetch('./anime.csv');
-                if (animeRes.ok) {
+            // Inner helper: load anime.csv
+            async function loadAnimeCSV() {
+                try {
+                    const animeRes = await fetch('./anime.csv');
+                    if (!animeRes.ok) return;
                     const contentType = animeRes.headers.get("content-type");
                     if (contentType && contentType.indexOf("text/html") !== -1) {
                         throw new Error("CSV yerine HTML geldi.");
@@ -1467,7 +1467,6 @@
                     let scoreIdx = headers.findIndex(h => h === 'score' || h === 'rating' || h.includes('score'));
                     let descIdx = headers.findIndex(h => h === 'synopsis' || h === 'summary' || h === 'description' || h.includes('desc'));
                     let genreIdx = headers.findIndex(h => h === 'genre' || h === 'genres' || h.includes('genre'));
-                    // image_url'yi bul — anime_url ile karışmasın, önce tam eşleşmeye bak
                     let imgIdx = headers.findIndex(h => h === 'image_url');
                     if (imgIdx === -1) imgIdx = headers.findIndex(h => h === 'image' || h === 'picture' || h.includes('img'));
                     if (imgIdx === -1) imgIdx = headers.findIndex(h => h.includes('image') && h.includes('url'));
@@ -1488,7 +1487,6 @@
 
                         if (cols.length > nameIdx) {
                             let nameRaw = cols[nameIdx] ? cols[nameIdx].replace(/["']/g, '').trim() : '';
-                            // english_name boşsa 'name' kolonuna düş
                             if (!nameRaw) {
                                 let fallbackNameIdx = headers.findIndex(h => h === 'name');
                                 if (fallbackNameIdx !== -1 && cols[fallbackNameIdx]) {
@@ -1503,7 +1501,6 @@
                             let descRaw = descIdx !== -1 && cols[descIdx] ? cols[descIdx].replace(/["']/g, '').trim() : "";
                             let genreRaw = genreIdx !== -1 && cols[genreIdx] ? cols[genreIdx].replace(/["']/g, '').trim() : "";
                             let imgRaw = imgIdx !== -1 && cols[imgIdx] ? cols[imgIdx].replace(/["']/g, '').trim() : null;
-                            // Geçerli resim URL'si mi kontrol et
                             if (imgRaw && !imgRaw.startsWith('http')) imgRaw = null;
                             
                             let genresList = genreRaw ? genreRaw.split(',').map(g => g.trim()) : [];
@@ -1524,33 +1521,90 @@
                                 premiered: null,
                                 dataSource: 'Yerel Arşiv (Anime CSV)'
                             });
-                            if (localAnimeDataset.length % 500 === 0) {
-                                updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length, localTMDBDataset.length,
-                                    62 + Math.min(30, (localAnimeDataset.length / 15000) * 30),
-                                    `Anime CSV okunuyor... ${localAnimeDataset.length} anime`);
-                                await new Promise(r => setTimeout(r, 0));
-                            }
                         }
                     }
-                }
-            } catch (e) {}
+                    console.log('Anime CSV yüklendi:', localAnimeDataset.length, 'anime');
+                } catch (e) { console.warn('anime.csv yüklenemedi:', e); }
+            }
 
-            // Turkish TV Series CSV yükle
+            // ── 3. PARALLEL LOADING: All JSON parts + all CSVs at once ────
+            updateStartupUI(0, 0, 0, 10, 'Tüm veri kaynakları paralel indiriliyor...');
+
+            const jsonParts = [
+                'series_part1.json', 'series_part2.json', 'series_part3.json', 'series_part4.json',
+                'series_part5.json', 'series_part6.json', 'series_part7.json', 'series_part8.json'
+            ];
+
+            await Promise.allSettled([
+                // All 8 JSON parts in parallel
+                ...jsonParts.map(fn => loadJsonPart(fn)),
+                // Destek CSVs
+                loadTMDBDestek('dizilerdestek1.csv', localDestek1Dataset, 'dizilerdestek1.csv'),
+                loadTMDBDestek('dizilerdestek2.csv', localDestek2Dataset, 'dizilerdestek2.csv'),
+                // All 4 CSVs in parallel
+                loadImdbCSV(),
+                loadAnimeCSV(),
+                loadTurkishCSV(),
+                loadKDramaCSV()
+            ]);
+
+            // ── 4. Save to cache ──────────────────────────────────────────
+            saveCacheToStorage();
+
+            // ── 5. Done ──────────────────────────────────────────────────
             updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length,
                 localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
-                92, 'Türk Dizileri verisi yükleniyor...');
-            await loadTurkishCSV();
-
-            // K-Drama CSV yükle
-            updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length,
-                localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
-                96, 'K-Drama verisi yükleniyor...');
-            await loadKDramaCSV();
-
-            // Yükleme tamamlandı → overlay'i kapat
-            updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length, localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length, 100, 'Sistem Hazır! 🎬');
+                100, 'Sistem Hazır! 🎬');
             await new Promise(r => setTimeout(r, 600));
             hideStartupOverlay();
+
+            // ── Background Refresh Helper ────────────────────────────────
+            async function performBackgroundRefresh() {
+                try {
+                    // Save current user-visible data
+                    const backup = {
+                        localTMDBDataset: [...localTMDBDataset],
+                        localDestek1Dataset: [...localDestek1Dataset],
+                        localDestek2Dataset: [...localDestek2Dataset],
+                        localIMDBData: {...localIMDBData},
+                        localIMDBSearchDataset: [...localIMDBSearchDataset],
+                        localAnimeDataset: [...localAnimeDataset],
+                        localTurkishDataset: [...localTurkishDataset],
+                        localKDramaDataset: [...localKDramaDataset]
+                    };
+                    // Reset globals for fresh load
+                    localTMDBDataset.length = 0;
+                    localDestek1Dataset.length = 0;
+                    localDestek2Dataset.length = 0;
+                    localIMDBData = {};
+                    localIMDBSearchDataset.length = 0;
+                    localAnimeDataset.length = 0;
+                    localTurkishDataset.length = 0;
+                    localKDramaDataset.length = 0;
+
+                    await Promise.allSettled([
+                        ...jsonParts.map(fn => loadJsonPart(fn)),
+                        loadTMDBDestek('dizilerdestek1.csv', localDestek1Dataset, 'dizilerdestek1.csv'),
+                        loadTMDBDestek('dizilerdestek2.csv', localDestek2Dataset, 'dizilerdestek2.csv'),
+                        loadImdbCSV(),
+                        loadAnimeCSV(),
+                        loadTurkishCSV(),
+                        loadKDramaCSV()
+                    ]);
+                    saveCacheToStorage();
+
+                    // Restore user-visible data
+                    localTMDBDataset = backup.localTMDBDataset;
+                    localDestek1Dataset = backup.localDestek1Dataset;
+                    localDestek2Dataset = backup.localDestek2Dataset;
+                    localIMDBData = backup.localIMDBData;
+                    localIMDBSearchDataset = backup.localIMDBSearchDataset;
+                    localAnimeDataset = backup.localAnimeDataset;
+                    localTurkishDataset = backup.localTurkishDataset;
+                    localKDramaDataset = backup.localKDramaDataset;
+                    console.log('✓ Arka plan önbellek güncellemesi tamamlandı.');
+                } catch(e) { console.warn('Arka plan güncelleme hatası:', e); }
+            }
         }
 
         window.addEventListener('DOMContentLoaded', loadLocalDatasets);
@@ -2510,18 +2564,16 @@
                         let extraTerms = getThemeSearchTerms(engTheme, subTheme);
                         catQueries = [...catQueries, ...extraTerms];
                         
-                        for (let q of catQueries.slice(0, 8)) {
-                            if (!q || q.trim().length < 2) continue;
-                            targetedResults = targetedResults.concat(await searchTMDB(q));
-                        }
+                        const catFetches = catQueries.slice(0, 8).filter(q => q && q.trim().length >= 2).map(q => searchTMDB(q));
+                        const catResults = await Promise.all(catFetches);
+                        targetedResults = catResults.flat();
                     } else {
                         // SubTheme yok: sadece kategori keyword'leri
                         semanticText = catKeywordStr;
                         let catQueries = mainCatIdx !== -1 ? categoryKeywords[mainCatIdx].slice(0, 4) : [];
-                        for (let q of catQueries) {
-                            targetedResults = targetedResults.concat(await searchTMDB(q));
-                            targetedResults = targetedResults.concat(await searchITunes(q));
-                        }
+                        const catFetches2 = catQueries.flatMap(q => [searchTMDB(q), searchITunes(q)]);
+                        const catResults2 = await Promise.all(catFetches2);
+                        targetedResults = catResults2.flat();
                     }
                     
                     searchResults = await buildSemanticPool();
@@ -2533,26 +2585,27 @@
                 
                 if (typeFilter !== 'LiveAction' && typeFilter !== 'Turkish' && typeFilter !== 'KDrama') {
                     let animeQueries = method === 'fav' ? seriesList : [subTheme || (mainCatIdx !== -1 ? categoryKeywords[mainCatIdx][0] : "")];
-                    for (let q of animeQueries) {
-                        if (q) animeResults = animeResults.concat(await searchAnime(q));
-                    }
+                    const animeFetches = animeQueries.filter(q => q).map(q => searchAnime(q));
+                    const animeRes = await Promise.all(animeFetches);
+                    animeResults = animeRes.flat();
                 }
 
-                let regionalResults = [];
+                let regionalPromises = [];
                 if (typeFilter === 'KDrama') {
-                    regionalResults = await searchTMDB('korean drama ' + (subTheme || ""));
+                    regionalPromises.push(searchTMDB('korean drama ' + (subTheme || "")));
                 } else if (typeFilter === 'Turkish') {
-                    regionalResults = await searchTMDB('turkish ' + (subTheme || ""));
+                    regionalPromises.push(searchTMDB('turkish ' + (subTheme || "")));
                 }
                 
                 if (typeFilter === 'Animation' || typeFilter === 'All') {
-                    regionalResults = regionalResults.concat(await searchTMDB('cartoon animation ' + (subTheme || "")));
-                    regionalResults = regionalResults.concat(await searchITunes('cartoon animation ' + (subTheme || "")));
+                    regionalPromises.push(searchTMDB('cartoon animation ' + (subTheme || "")));
+                    regionalPromises.push(searchITunes('cartoon animation ' + (subTheme || "")));
                 }
                 if (typeFilter === 'Anime' || typeFilter === 'All') {
-                    regionalResults = regionalResults.concat(await searchTMDB('anime ' + (subTheme || "")));
-                    regionalResults = regionalResults.concat(await searchITunes('anime ' + (subTheme || "")));
+                    regionalPromises.push(searchTMDB('anime ' + (subTheme || "")));
+                    regionalPromises.push(searchITunes('anime ' + (subTheme || "")));
                 }
+                const regionalResults = (await Promise.all(regionalPromises)).flat();
 
                 searchResults = searchResults.concat(animeResults).concat(regionalResults);
 
@@ -2736,6 +2789,14 @@
                         }
                         // cat'ta da aynı ağırlık sınıfları geçerli (yukarıda zaten uygulandı)
                     }
+
+                    // ── HIZLI ÖN FİLTRE: pahalı ML'den önce ucuz cosine kontrolü ──
+                    let quickCosine = algoCosine(userProfile, showProfile);
+                    if (method === 'fav' && quickCosine < 0.005) {
+                        let bm25_score = calculateBM25(uText, fullShowText, idfMap);
+                        if (bm25_score < 0.02) continue;
+                    }
+                    if (method === 'cat' && quickCosine < 0.001 && !hasSubTheme) continue;
 
                     let concept_score = ensembleMachineLearning(userProfile, showProfile, fullShowText, uText);
                     let bm25_score    = calculateBM25(uText, fullShowText, idfMap);
@@ -3116,20 +3177,23 @@
             let similarShows = [];
             // Ana dizinin genre seti
             let baseGenres = new Set((bestMatch.genres || []).map(g => g.toLowerCase()));
-            globalScoredMatches.forEach((matchObj, idx) => {
-                if (idx !== index && m.profile && matchObj.profile && m.profile.length === matchObj.profile.length) {
-                    let cosine = algoCosine(m.profile, matchObj.profile);
-                    // Genre overlap bonusu
-                    let mGenres = new Set((matchObj.show.genres || []).map(g => g.toLowerCase()));
-                    let genreOverlap = 0;
-                    baseGenres.forEach(g => { if (mGenres.has(g)) genreOverlap++; });
-                    let genreBonus = genreOverlap > 0 ? (genreOverlap / Math.max(baseGenres.size, mGenres.size)) * 0.3 : 0;
-                    // BM25 text benzerliği
-                    let bm25sim = algoSorensenDice(m.sText || '', matchObj.sText || '');
-                    let sim = (cosine * 0.5) + (bm25sim * 0.2) + genreBonus;
-                    if (!isNaN(sim) && sim > 0.05) similarShows.push({ idx: idx, match: matchObj, sim: sim, cosine: cosine });
-                }
-            });
+            let scanLimit = Math.min(globalScoredMatches.length, 250);
+            for (let si = 0; si < scanLimit; si++) {
+                let matchObj = globalScoredMatches[si];
+                if (!matchObj || si === index) continue;
+                if (!m.profile || !matchObj.profile || m.profile.length !== matchObj.profile.length) continue;
+                let cosine = algoCosine(m.profile, matchObj.profile);
+                if (cosine < 0.03) continue;
+                // Genre overlap bonusu
+                let mGenres = new Set((matchObj.show.genres || []).map(g => g.toLowerCase()));
+                let genreOverlap = 0;
+                baseGenres.forEach(g => { if (mGenres.has(g)) genreOverlap++; });
+                let genreBonus = genreOverlap > 0 ? (genreOverlap / Math.max(baseGenres.size, mGenres.size)) * 0.3 : 0;
+                // Text benzerliği
+                let diceSim = algoSorensenDice(m.sText || '', matchObj.sText || '');
+                let sim = (cosine * 0.5) + (diceSim * 0.2) + genreBonus;
+                if (!isNaN(sim) && sim > 0.05) similarShows.push({ idx: si, match: matchObj, sim: sim, cosine: cosine });
+            }
 
             similarShows.sort((a, b) => b.sim - a.sim);
             let topSimilar = similarShows.slice(0, 12);
@@ -3437,13 +3501,20 @@
             }
         }
 
+        let enTranslationCache = (() => {
+            try { return JSON.parse(localStorage.getItem('heni_en_cache') || '{}'); } catch(e) { return {}; }
+        })();
         async function translateToEN(text) {
             if (!text) return "";
+            if (enTranslationCache[text]) return enTranslationCache[text];
             try {
                 const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=tr&tl=en&dt=t&q=${encodeURIComponent(text)}`;
                 const res = await fetch(url);
                 const data = await res.json();
-                return data[0].map(item => item[0]).join('');
+                let result = data[0].map(item => item[0]).join('');
+                enTranslationCache[text] = result;
+                try { localStorage.setItem('heni_en_cache', JSON.stringify(enTranslationCache)); } catch(e) {}
+                return result;
             } catch (e) { return text; }
         }
 
@@ -3646,97 +3717,100 @@
 
                 const latinName = trToLatin(show.name);
 
-                // ADIM 1: IMDb ID → TMDB /find/ (en kesin)
-                if (needsImage && show.externals && show.externals.imdb) {
-                    try {
-                        const r1 = await fetch(`${TMDB_BASE}/find/${show.externals.imdb}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
-                        if (r1.ok) {
-                            const fd = await r1.json();
-                            applyTmdbHit((fd.tv_results && fd.tv_results[0]) || null);
-                        }
-                    } catch(e) {}
+                // ── PARALEL 6 AŞAMALI ARAMA: tüm istekler aynı anda, ilk başarılı sonuç kazanır ──
+                const imgFetchPromises = [];
+
+                // ADIM 1: IMDb ID → TMDB /find/
+                if (show.externals && show.externals.imdb) {
+                    imgFetchPromises.push((async () => {
+                        try {
+                            const r1 = await fetch(`${TMDB_BASE}/find/${show.externals.imdb}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
+                            if (r1.ok) { const fd = await r1.json(); return (fd.tv_results && fd.tv_results[0]) || null; }
+                        } catch(e) {}
+                        return null;
+                    })());
                 }
 
-                // ADIM 2a: TMDB search — Türkçe aksanlı isim, tr-TR dil
-                if (needsImage) {
+                // ADIM 2a: TMDB search — Türkçe isim, tr-TR
+                imgFetchPromises.push((async () => {
                     try {
-                        const r2 = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(show.name)}&language=tr-TR&include_adult=false`);
-                        if (r2.ok) {
-                            const sd = await r2.json();
-                            let hit = sd.results && (sd.results.find(r => r.poster_path && r.origin_country && r.origin_country.includes('TR')) || sd.results.find(r => r.poster_path));
-                            applyTmdbHit(hit || null);
-                        }
+                        const r = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(show.name)}&language=tr-TR&include_adult=false`);
+                        if (r.ok) { const sd = await r.json(); return sd.results && (sd.results.find(x => x.poster_path && x.origin_country && x.origin_country.includes('TR')) || sd.results.find(x => x.poster_path)) || null; }
                     } catch(e) {}
+                    return null;
+                })());
+
+                // ADIM 2b: TMDB search — original_name
+                if (show.original_name && show.original_name !== show.name) {
+                    imgFetchPromises.push((async () => {
+                        try {
+                            const r = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(show.original_name)}&language=tr-TR&include_adult=false`);
+                            if (r.ok) { const sd = await r.json(); return sd.results && (sd.results.find(x => x.poster_path && x.origin_country && x.origin_country.includes('TR')) || sd.results.find(x => x.poster_path)) || null; }
+                        } catch(e) {}
+                        return null;
+                    })());
                 }
 
-                // ADIM 2b: TMDB search — original_name (aksansız ASCII, CSV'deki ham isim)
-                if (needsImage && show.original_name && show.original_name !== show.name) {
-                    try {
-                        const r2b = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(show.original_name)}&language=tr-TR&include_adult=false`);
-                        if (r2b.ok) {
-                            const sd = await r2b.json();
-                            let hit = sd.results && (sd.results.find(r => r.poster_path && r.origin_country && r.origin_country.includes('TR')) || sd.results.find(r => r.poster_path));
-                            applyTmdbHit(hit || null);
-                        }
-                    } catch(e) {}
+                // ADIM 3: Latin transliteration
+                if (latinName !== show.name) {
+                    imgFetchPromises.push((async () => {
+                        try {
+                            const r = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(latinName)}&language=tr-TR&include_adult=false`);
+                            if (r.ok) { const sd = await r.json(); return sd.results && (sd.results.find(x => x.poster_path && x.origin_country && x.origin_country.includes('TR')) || sd.results.find(x => x.poster_path)) || null; }
+                        } catch(e) {}
+                        return null;
+                    })());
                 }
 
-                // ADIM 3: TMDB search — Latin transliteration ile (ğ→g, ş→s vb.)
-                if (needsImage && latinName !== show.name) {
+                // ADIM 4: İngilizce dil
+                imgFetchPromises.push((async () => {
                     try {
-                        const r3 = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(latinName)}&language=tr-TR&include_adult=false`);
-                        if (r3.ok) {
-                            const sd = await r3.json();
-                            let hit = sd.results && (sd.results.find(r => r.poster_path && r.origin_country && r.origin_country.includes('TR')) || sd.results.find(r => r.poster_path));
-                            applyTmdbHit(hit || null);
-                        }
+                        const r = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(latinName)}&language=en-US&include_adult=false`);
+                        if (r.ok) { const sd = await r.json(); return sd.results && (sd.results.find(x => x.poster_path && x.origin_country && x.origin_country.includes('TR')) || sd.results.find(x => x.poster_path)) || null; }
                     } catch(e) {}
-                }
+                    return null;
+                })());
 
-                // ADIM 4: TMDB search — İngilizce dil, TR ülke önceliği
-                if (needsImage) {
-                    try {
-                        const r4 = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(latinName)}&language=en-US&include_adult=false`);
-                        if (r4.ok) {
-                            const sd = await r4.json();
-                            let hit = sd.results && (sd.results.find(r => r.poster_path && r.origin_country && r.origin_country.includes('TR')) || sd.results.find(r => r.poster_path));
-                            applyTmdbHit(hit || null);
-                        }
-                    } catch(e) {}
-                }
-
-                // ADIM 5: İlk 2-3 kelimeyle kısa arama (uzun isimler için)
-                if (needsImage) {
-                    try {
-                        let words = show.name.trim().split(/\s+/);
-                        if (words.length > 2) {
-                            let shortName = trToLatin(words.slice(0, 2).join(' '));
-                            const r5 = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(shortName)}&language=tr-TR&include_adult=false`);
-                            if (r5.ok) {
-                                const sd = await r5.json();
-                                let hit = sd.results && sd.results.find(r => r.poster_path && r.origin_country && r.origin_country.includes('TR'));
-                                applyTmdbHit(hit || null);
-                            }
-                        }
-                    } catch(e) {}
+                // ADIM 5: Kısa isim araması
+                let words = show.name.trim().split(/\s+/);
+                if (words.length > 2) {
+                    let shortName = trToLatin(words.slice(0, 2).join(' '));
+                    imgFetchPromises.push((async () => {
+                        try {
+                            const r = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(shortName)}&language=tr-TR&include_adult=false`);
+                            if (r.ok) { const sd = await r.json(); return sd.results && sd.results.find(x => x.poster_path && x.origin_country && x.origin_country.includes('TR')) || null; }
+                        } catch(e) {}
+                        return null;
+                    })());
                 }
 
                 // ADIM 6: iTunes Türkiye
-                if (needsImage) {
+                imgFetchPromises.push((async () => {
                     try {
-                        const r6 = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(latinName)}&media=tvShow&country=tr&limit=3`);
-                        if (r6.ok) {
-                            const id6 = await r6.json();
+                        const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(latinName)}&media=tvShow&country=tr&limit=3`);
+                        if (r.ok) {
+                            const id6 = await r.json();
                             let best = id6.results && id6.results.find(x => x.artworkUrl100);
                             if (best) {
                                 let iu = best.artworkUrl100.replace('100x100bb','600x600bb');
                                 show.image = { original: iu, medium: iu };
                                 let imgEl = document.getElementById(`${prefix}img-${index}`);
                                 if (imgEl) imgEl.src = iu;
-                                needsImage = false;
+                                return { iTunes: true };
                             }
                         }
                     } catch(e) {}
+                    return null;
+                })());
+
+                // Tüm istekleri paralel başlat, ilk poster bulan kazanır
+                if (imgFetchPromises.length > 0) {
+                    const settled = await Promise.allSettled(imgFetchPromises);
+                    for (let result of settled) {
+                        if (result.status !== 'fulfilled' || !result.value) continue;
+                        if (result.value.iTunes) break; // iTunes zaten uyguladı
+                        if (applyTmdbHit(result.value)) break; // Poster bulundu, devam etme
+                    }
                 }
             }
 
@@ -4135,7 +4209,11 @@
             return 1 / (1 + Math.exp(-k * (x - x0)));
         }
 
+        let _cachedIDFMap = null;
+        let _cachedIDFKey = "";
         function buildIDFMap(shows) {
+            let key = shows.length + "|" + shows.slice(0,3).map(s=>(s.name||"").substring(0,20)).join(",");
+            if (_cachedIDFMap && _cachedIDFKey === key) return _cachedIDFMap;
             let df = {};
             shows.forEach(s => {
                 let t = ((s.summary||"") + " " + (s.genres||[]).join(" ")).toLowerCase();
@@ -4147,6 +4225,8 @@
             for(let w in df) {
                 idf[w] = Math.log10((N - df[w] + 0.5) / (df[w] + 0.5) + 1.0); 
             }
+            _cachedIDFMap = idf;
+            _cachedIDFKey = key;
             return idf;
         }
 
@@ -4172,7 +4252,9 @@
             return Math.min(1.0, score / (qWords.length * 2.5)); 
         }
 
+        let _profileCache = {};
         function getProfileVector(text) {
+            if (_profileCache[text]) return _profileCache[text];
             let t = text.toLowerCase();
             let scores = new Array(categoryKeywords.length).fill(0.0);
             categoryKeywords.forEach((cat, i) => {
@@ -4192,6 +4274,7 @@
                 scores = scores.map(val => val / magnitude);
             }
             
+            _profileCache[text] = scores;
             return scores;
         }
 
@@ -4212,6 +4295,14 @@
             let deepScore = algoDeepLearningPerceptron(uProf, sProf);
             let cosineScore = algoCosine(uProf, sProf);
             let wideScore = algoJaccard(uText, sText);
+            
+            // V2 HIZ: 5 çekirdek algoritmanın tahmini skorunu hesapla
+            let quickEstimate = (transformerScore * 0.25) + (ncfScore * 0.20) + (deepScore * 0.15) + (cosineScore * 0.10);
+            
+            // Tahmini skor çok düşükse 18 minor algoritmayı atla (%10 agirlik = max 0.1 fark)
+            if (quickEstimate <= 0.02) {
+                return (transformerScore * 0.25) + (ncfScore * 0.20) + (wideScore * 0.20) + (deepScore * 0.15) + (cosineScore * 0.10) + (0.3 * 0.10);
+            }
             
             let eSim = algoEuclidean(uProf, sProf);
             let mSim = algoManhattan(uProf, sProf);

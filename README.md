@@ -1,9 +1,9 @@
 # SÉRA - Series Emotion Recommendation AI 🤖🎬
 
 ![SÉRA Logo](https://raw.githubusercontent.com/caca1403/dizionerisistemi/master/assets/seraai.ico) > 
-**"Zevk DNA'nıza Göre Dizi Keşfi"**
-> SÉRA, izleme alışkanlıklarınızı ve duygusal tercihlerinizi analiz ederek size en uygun yapımları sunan, tarayıcı tabanlı gelişmiş bir yapay zeka öneri motorudur.
 
+> SÉRA, izleme alışkanlıklarınızı ve duygusal tercihlerinizi analiz ederek size en uygun yapımları sunan, tarayıcı tabanlı gelişmiş bir yapay zeka öneri motorudur.
+**"Zevk DNA'nıza Göre Dizi Keşfi"**
 ---
 
 ## ✨ Öne Çıkan Özellikler

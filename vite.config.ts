@@ -64,5 +64,8 @@ function tmdbDevProxy(env: Record<string, string>): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  return { plugins: [react(), tmdbDevProxy(env)] };
+  return { 
+    base: '/dizionerisistemi/',
+    plugins: [react(), tmdbDevProxy(env)] 
+  };
 });

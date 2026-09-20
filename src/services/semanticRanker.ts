@@ -43,7 +43,6 @@ const expansions: Record<string, string[]> = {
   kaçış: ['kaçış', 'escape', 'firar', 'fugitive', 'prison', 'özgürlük'],
   hayatta: ['hayatta', 'survival', 'korku', 'survivor'],
   kalma: ['hayatta kalma', 'survival', 'korku', 'survivor'],
-  zombi: ['zombi', 'zombie', 'salgın', 'kıyamet', 'undead'],
   dedektif: ['dedektif', 'detective', 'soruşturma', 'cinayet', 'suç', 'polis'],
 };
 

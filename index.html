@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://translate.googleapis.com https://api.mymemory.translated.net https://api.tvmaze.com https://api.jikan.moe https://itunes.apple.com https://en.wikipedia.org https://allorigins.win https://api.allorigins.win https://search.imdbot.workers.dev https://www.episodate.com;">
     <link rel="icon" href="https://raw.githubusercontent.com/caca1403/dizionerisistemi/master/assets/seraai.ico" type="image/x-icon">
-    <title>SÉRA - Akıllı Dizi Keşfi</title>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <title>SÉRA — Kişisel Dizi Keşfi</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <style>
         :root {
             --bg-color: #000000;
@@ -420,6 +420,69 @@
         .startup-count-item { text-align: center; }
         .startup-count-item .num { font-size: 1.8em; font-weight: 900; color: #e50914; }
         .startup-count-item .lbl { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+
+        .discovery-brief { display:grid; gap:7px; margin:0 0 22px; padding:13px 14px; border:1px solid rgba(229,9,20,.24); border-radius:13px; color:#c9c9c9; background:linear-gradient(135deg,rgba(229,9,20,.10),rgba(255,255,255,.025)); font-size:12px; line-height:1.35; }
+        .discovery-brief span { display:flex; align-items:center; gap:7px; }
+
+        /* Phone-first layout: reduce paint area and make the first screen usable
+           without horizontal overflow. */
+        @media (max-width: 600px) {
+            body { padding: 18px 12px 32px; align-items: stretch; }
+            h1 { font-size: clamp(2.1rem, 12vw, 3rem); letter-spacing: 3px; text-align: center; }
+            p.subtitle { margin-bottom: 18px; font-size: .65rem; letter-spacing: 1.7px; text-align: center; }
+            .container { border-radius: 14px; }
+            .container-body { padding: 22px 16px; }
+            .nav-tab { flex-basis: 152px !important; min-width: 152px; padding: 16px 14px; font-size: 14px; }
+            .result-layout { padding: 18px; gap: 16px; border-radius: 14px; }
+            .poster-col, .info-col { min-width: 0; flex-basis: 100%; }
+            .n-card { flex-basis: 142px; height: 213px; }
+            .netflix-slider { gap: 12px; padding: 10px 2px; }
+            .netflix-slider-container h2 { font-size: 19px; }
+            .btn-group .btn-action { min-width: 118px; }
+        }
+
+        /* SÉRA visual refresh */
+        :root { --surface:rgba(13,15,24,.78); --line:rgba(255,255,255,.10); --ink:#f8fafc; --soft:#a7afc1; }
+        body { padding:34px 24px 70px; align-items:stretch; background:radial-gradient(900px 520px at 10% -15%,rgba(228,9,20,.22),transparent 63%),radial-gradient(680px 420px at 92% 10%,rgba(119,47,255,.15),transparent 70%),#07080d; }
+        #main-bg-container { opacity:.24; filter:saturate(.7) contrast(1.08); }
+        .main-bg-overlay { background:linear-gradient(180deg,rgba(5,6,10,.62),rgba(5,6,10,.94)); }
+        .sera-hero { width:min(1120px,100%); margin:0 auto 22px; padding:18px 4px 8px; }
+        .sera-brand { display:flex; align-items:center; gap:13px; }
+        .brand-mark { display:grid; place-items:center; width:42px; height:42px; border:1px solid rgba(255,255,255,.18); border-radius:14px; color:#fff; background:linear-gradient(145deg,#ff5a38,#c90820 68%); box-shadow:0 12px 28px rgba(229,9,20,.3); font-family:Georgia,serif; font-size:1.45rem; font-weight:900; }
+        h1 { margin:0; color:var(--ink); font-size:clamp(2.3rem,5vw,3.7rem); letter-spacing:-.075em; line-height:.92; text-shadow:none; }
+        h1 span { color:#ff604b; text-shadow:0 0 26px rgba(255,62,75,.4); }
+        p.subtitle { max-width:600px; margin:13px 0 0 56px; color:var(--soft); font-size:.86rem; letter-spacing:.04em; line-height:1.55; text-transform:none; }
+        .hero-signals { display:flex; flex-wrap:wrap; gap:8px; margin:17px 0 0 56px; }
+        .hero-signals span { padding:7px 10px; border:1px solid var(--line); border-radius:999px; color:#d6dae4; background:rgba(9,10,16,.55); font-size:.68rem; font-weight:700; backdrop-filter:blur(10px); }
+        .sera-app { width:min(1120px,100%); margin:0 auto; }
+        .container { max-width:none; overflow:visible; border:1px solid var(--line); border-radius:24px; background:linear-gradient(135deg,rgba(22,24,37,.90),rgba(8,10,17,.88)); box-shadow:0 28px 80px rgba(0,0,0,.45); backdrop-filter:blur(18px); }
+        .nav-tabs { gap:7px; padding:10px; overflow-x:auto; border:0; border-radius:24px 24px 0 0; background:rgba(4,5,10,.54); scrollbar-width:none; }
+        .nav-tabs::-webkit-scrollbar { display:none; }
+        .nav-tab { flex:1 0 auto !important; min-width:auto; margin:0; padding:12px 15px; border:1px solid transparent; border-radius:12px; color:#98a1b3; font-size:.78rem; letter-spacing:.01em; }
+        .nav-tab:hover { color:#fff; background:rgba(255,255,255,.06); transform:none; box-shadow:none; }
+        .nav-tab.active { border-color:rgba(255,90,93,.28); color:#fff; background:linear-gradient(135deg,rgba(229,9,20,.33),rgba(247,83,89,.12)); box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 7px 22px rgba(0,0,0,.18); }
+        .nav-tab span { padding:2px 6px; border-radius:99px; background:#ed3341; font-size:10px; }
+        .container-body { max-width:760px; padding:38px; }
+        label { color:#cbd2df; font-size:.74rem; letter-spacing:.035em; }
+        input,select { margin:7px 0 19px; padding:14px 15px; border-color:var(--line); border-radius:12px; background:rgba(5,7,13,.62); color:#f8fafc; box-shadow:inset 0 1px 0 rgba(255,255,255,.025); }
+        input:focus,select:focus { border-color:#ff5a62; box-shadow:0 0 0 3px rgba(255,62,75,.13); }
+        .filter-section { display:grid; gap:0; margin:16px 0 22px; padding:18px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.025); }
+        button,#analyzeBtn { border:1px solid rgba(255,106,98,.46); border-radius:12px; background:linear-gradient(135deg,#e50914,#ff5a45); box-shadow:0 12px 26px rgba(229,9,20,.22); }
+        button:hover,#analyzeBtn:hover { transform:translateY(-1px); box-shadow:0 16px 34px rgba(229,9,20,.30); }
+        .discovery-intro { display:flex; align-items:center; justify-content:space-between; gap:25px; margin:0 0 24px; padding:4px 2px; }
+        .section-eyebrow { display:block; margin-bottom:8px; color:#ff7464; font-size:.62rem; font-weight:900; letter-spacing:.17em; }
+        .discovery-intro h2 { max-width:490px; margin:0; color:#fff; font-size:clamp(1.5rem,3vw,2.15rem); line-height:1.06; letter-spacing:-.04em; }
+        .discovery-intro p { max-width:520px; margin:11px 0 0; color:var(--soft); font-size:.82rem; line-height:1.6; }
+        .intro-orbit { display:grid; width:82px; height:82px; flex:none; place-items:center; border:1px solid rgba(255,104,99,.38); border-radius:50%; color:#ff735e; background:radial-gradient(circle,rgba(229,9,20,.22),transparent 65%); animation:seraPulse 4s ease-in-out infinite; font-size:1.4rem; }
+        @keyframes seraPulse { 50% { transform:scale(1.06) rotate(6deg); } }
+        .discovery-brief { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin:0 0 22px; padding:0; border:0; border-radius:0; background:transparent; }
+        .discovery-brief span { min-height:48px; align-items:flex-start; padding:10px; border:1px solid var(--line); border-radius:11px; color:#bac2d0; background:rgba(255,255,255,.025); font-size:.68rem; }
+        #result { max-width:1120px !important; margin:26px auto 0; }
+        .result-layout { border:1px solid var(--line); border-radius:22px; background:rgba(13,15,24,.88); box-shadow:0 22px 60px rgba(0,0,0,.32); }
+        .n-card { border-color:rgba(255,255,255,.09); border-radius:15px; }
+        .n-card:hover { transform:translateY(-6px) scale(1.025); border-color:rgba(255,92,86,.55); }
+        @media (max-width:700px) { body { padding:18px 12px 42px; } .sera-hero { padding:8px 4px 12px; } .brand-mark { width:36px; height:36px; border-radius:12px; font-size:1.2rem; } p.subtitle,.hero-signals { margin-left:0; } .hero-signals { margin-top:13px; gap:6px; } .hero-signals span { padding:6px 8px; font-size:.61rem; } .container { border-radius:18px; } .nav-tabs { padding:8px; border-radius:18px 18px 0 0; } .nav-tab { flex-basis:142px !important; padding:11px 12px; font-size:.71rem; } .container-body { padding:24px 17px; } .discovery-intro { align-items:flex-start; } .intro-orbit { width:56px; height:56px; } .discovery-intro p { font-size:.77rem; } .discovery-brief { grid-template-columns:1fr; } .discovery-brief span { min-height:auto; } .add-row { gap:8px !important; } .add-row button { flex-basis:48px !important; width:48px !important; font-size:25px !important; } }
+        @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
     </style>
 </head>
 <body>
@@ -427,7 +490,7 @@
     <!-- Başlangıç Yükleme Ekranı -->
     <div id="startupOverlay">
         <div class="startup-logo">SÉ<span>RA</span></div>
-        <div style="font-size:10px;letter-spacing:2px;color:#555;margin-top:4px;text-transform:uppercase;">Series Emotion Recommendation AI</div>
+        <div style="font-size:10px;letter-spacing:2px;color:#777;margin-top:4px;text-transform:uppercase;">Yerel içerik öneri motoru</div>
         <div class="startup-counts">
             <div class="startup-count-item">
                 <div class="num" id="suImdb">0</div>
@@ -458,9 +521,12 @@
         <div class="main-bg-overlay"></div>
     </div>
 
-    <h1>SÉ<span>RA</span></h1>
-    <p class="subtitle">Series Emotion Recommendation AI &nbsp;·&nbsp; Zevk DNA'nıza Göre Dizi Keşfi</p>
-
+    <header class="sera-hero">
+        <div class="sera-brand"><span class="brand-mark">S</span><h1>SÉ<span>RA</span></h1></div>
+        <p class="subtitle">İzleme zevkinden yola çıkan, şeffaf ve kişisel dizi keşfi</p>
+        <div class="hero-signals"><span>✦ Kişisel öneriler</span><span>⌁ Cihazında saklanır</span><span>⌕ Büyük arşiv</span></div>
+    </header>
+    <main class="sera-app">
     <div class="container">
         <div class="nav-tabs" id="navTabs">
             <button class="nav-tab active" onclick="switchTab('fav', this)">🤖 Dizi Analizi</button>
@@ -504,7 +570,16 @@
         <div class="container-body">
 
             <div id="view-fav" class="view-section active">
-                <label>En Sevdiğiniz Dizileri Ekleyin (AI Zevk Profilinizi Çıkarsın)</label>
+                <section class="discovery-intro">
+                    <div><span class="section-eyebrow">KİŞİSEL KEŞİF</span><h2>Sevdiğin dizilerden yeni bir rota çıkar.</h2><p>İki ya da daha fazla yapım ekle; SÉRA tür, konu ve anlatı yakınlığına göre adayları sıralasın.</p></div>
+                    <div class="intro-orbit" aria-hidden="true">✦</div>
+                </section>
+                <div class="discovery-brief" aria-label="Öneri yöntemi">
+                    <span>🔒 Tercihler bu cihazda kalır</span>
+                    <span>∑ TF-IDF · BM25 · kosinüs benzerliği</span>
+                    <span>⚡ Çekirdek arşiv hazır, geniş arşiv arkada yüklenir</span>
+                </div>
+                <label>Sevdiğin dizileri ekle</label>
                 <div class="add-row" style="display:flex; gap:10px; margin-bottom:5px;">
                     <input type="text" id="seriesInput" placeholder="Örn: Sherlock, Dark, The Boys" onkeydown="if(event.key==='Enter')addTag()" style="margin:0; flex: 1;">
                     <button class="btn-action" style="margin:0; padding:0; font-size:32px; flex: 0 0 60px; width: 60px !important; display: flex; justify-content: center; align-items: center;" onclick="addTag()">+</button>
@@ -637,7 +712,7 @@
                 <h2 style="color: #fff; margin-top: 0; font-size:1.5em;">Veri ve Ayarlar</h2>
                 <div style="background:rgba(229,9,20,0.07);border:1px solid rgba(229,9,20,0.2);border-radius:12px;padding:16px 18px;margin-bottom:20px;">
                     <div style="font-size:1.1em;font-weight:900;letter-spacing:4px;color:#fff;margin-bottom:6px;">SÉ<span style="color:var(--primary);">RA</span></div>
-                    <div style="font-size:12px;color:#aaa;line-height:1.8;"><strong style="color:#ccc;">S</strong>eries &nbsp;<strong style="color:#ccc;">É</strong>motion &nbsp;<strong style="color:#ccc;">R</strong>ecommendation &nbsp;<strong style="color:#ccc;">A</strong>I<br>Zevk DNA'nızı çıkaran, beğenilerinizden öğrenen ve size özel dizi öneren yapay zeka motorudur.</div>
+                    <div style="font-size:12px;color:#aaa;line-height:1.8;"><strong style="color:#ccc;">S</strong>eries &nbsp;<strong style="color:#ccc;">É</strong>motion &nbsp;<strong style="color:#ccc;">R</strong>ecommendation &nbsp;<strong style="color:#ccc;">A</strong>I<br>Beğenilerinizden yararlanan, cihaz içinde çalışan ve size özel dizi öneren bir keşif motorudur.</div>
                 </div>
                 <p style="color:#aaa; font-size:14px; line-height:1.6; margin-bottom:20px;">AI Eğitme verilerinizi (Like/Dislike) ve favorilerinizi JSON olarak yedekleyebilir veya daha önce indirdiğiniz yedeği geri yükleyebilirsiniz.</p>
                 <button class="btn-action refresh-btn" style="width:100%; padding:15px; font-size:15px; margin-bottom:15px;" onclick="exportData()">💾 Verilerimi Yedekle (İndir)</button>
@@ -651,6 +726,7 @@
             </div>
         </div>
     </div>
+    </main>
 
     <div id="result" style="display: none; width: 100%; max-width: 1200px;">
         <div class="result-container">
@@ -1243,54 +1319,17 @@
         }
 
         // ── Cache Helper Functions ──────────────────────────────────────────
-        const CACHE_KEY = 'sera_data_cache_v3';
+        const CACHE_KEY = 'sera_data_cache_v4_light';
         const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-        function getCachedData() {
-            try {
-                const raw = localStorage.getItem(CACHE_KEY);
-                if (!raw) return null;
-                const parsed = JSON.parse(raw);
-                if (!parsed || !parsed.timestamp || !parsed.datasets) return null;
-                if (Date.now() - parsed.timestamp > CACHE_TTL) {
-                    localStorage.removeItem(CACHE_KEY);
-                    return null;
-                }
-                return parsed.datasets;
-            } catch(e) { return null; }
-        }
-
+        // Large object graphs do not fit safely in localStorage. Browsers already
+        // HTTP-cache the CSV files; keeping only compact user preferences avoids
+        // quota failures and multi-second JSON stringify/parse freezes.
+        function getCachedData() { return null; }
         function saveCacheToStorage() {
-            try {
-                const cacheObj = {
-                    timestamp: Date.now(),
-                    datasets: {
-                        localTMDBDataset: localTMDBDataset,
-                        localDestek1Dataset: localDestek1Dataset,
-                        localDestek2Dataset: localDestek2Dataset,
-                        localIMDBData: localIMDBData,
-                        localIMDBSearchDataset: localIMDBSearchDataset,
-                        localAnimeDataset: localAnimeDataset,
-                        localTurkishDataset: localTurkishDataset,
-                        localKDramaDataset: localKDramaDataset
-                    }
-                };
-                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheObj));
-                console.log('✓ Veriler önbelleğe kaydedildi.');
-            } catch(e) { console.warn('Cache kaydetme hatası:', e); }
+            try { localStorage.removeItem(CACHE_KEY); } catch (_) {}
         }
-
-        function restoreFromCache(data) {
-            localTMDBDataset = data.localTMDBDataset || [];
-            localDestek1Dataset = data.localDestek1Dataset || [];
-            localDestek2Dataset = data.localDestek2Dataset || [];
-            localIMDBData = data.localIMDBData || {};
-            localIMDBSearchDataset = data.localIMDBSearchDataset || [];
-            localAnimeDataset = data.localAnimeDataset || [];
-            localTurkishDataset = data.localTurkishDataset || [];
-            localKDramaDataset = data.localKDramaDataset || [];
-            console.log('✓ Önbellekten yüklendi.');
-        }
+        function restoreFromCache() {}
 
      async function loadLocalDatasets() {
             // ── 1. Cache Check ────────────────────────────────────────────
@@ -1302,7 +1341,7 @@
                     100, 'Sistem Hazır! (Önbellek) 🎬');
                 hideStartupOverlay();
                 // Background refresh for next visit (non-blocking)
-                setTimeout(() => performBackgroundRefresh(), 3000);
+                // Static data is HTTP-cached by the browser; no duplicate background parse.
                 return;
             }
 
@@ -1581,6 +1620,10 @@
                                 premiered: null,
                                 dataSource: 'Yerel Arşiv (Anime CSV)'
                             });
+                            // Keep the main thread responsive while parsing the large archive.
+                            if (localAnimeDataset.length % 300 === 0) {
+                                await new Promise(resolve => setTimeout(resolve, 0));
+                            }
                         }
                     }
                     console.log('Anime CSV yüklendi:', localAnimeDataset.length, 'anime');
@@ -1595,28 +1638,33 @@
                 'series_part5.json', 'series_part6.json', 'series_part7.json', 'series_part8.json'
             ];
 
+            // Fast path: enough data for immediate searching and recommendations.
+            // The large specialist archives are intentionally deferred below.
             await Promise.allSettled([
-                // All 8 JSON parts in parallel
-                ...jsonParts.map(fn => loadJsonPart(fn)),
-                // Destek CSVs
-                loadTMDBDestek('dizilerdestek1.csv', localDestek1Dataset, 'dizilerdestek1.csv'),
                 loadTMDBDestek('dizilerdestek2.csv', localDestek2Dataset, 'dizilerdestek2.csv'),
-                // All 4 CSVs in parallel
-                loadImdbCSV(),
-                loadAnimeCSV(),
-                loadTurkishCSV(),
-                loadKDramaCSV()
+                loadImdbCSV()
             ]);
 
-            // ── 4. Save to cache ──────────────────────────────────────────
-            saveCacheToStorage();
-
-            // ── 5. Done ──────────────────────────────────────────────────
             updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length,
                 localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
                 100, 'Sistem Hazır! 🎬');
-            await new Promise(r => setTimeout(r, 600));
             hideStartupOverlay();
+
+            // Load specialised archives only once the first interaction has a
+            // chance to paint. They enrich later searches without blocking the UI.
+            const loadDeferredArchives = async () => {
+                updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length,
+                    localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
+                    100, 'Ek arşivler arka planda hazırlanıyor...');
+                await loadKDramaCSV();
+                await loadTurkishCSV();
+                await loadAnimeCSV();
+                updateStartupUI(localIMDBSearchDataset.length, localAnimeDataset.length,
+                    localTMDBDataset.length + localDestek1Dataset.length + localDestek2Dataset.length,
+                    100, 'Sistem Hazır! 🎬');
+            };
+            const runWhenIdle = window.requestIdleCallback || ((callback) => setTimeout(callback, 1800));
+            runWhenIdle(() => { loadDeferredArchives().catch(() => {}); }, { timeout: 4000 });
 
             // ── Background Refresh Helper ────────────────────────────────
             async function performBackgroundRefresh() {
@@ -4412,9 +4460,12 @@
             let key = shows.length + "|" + shows.slice(0,3).map(s=>(s.name||"").substring(0,20)).join(",");
             if (_cachedIDFMap && _cachedIDFKey === key) return _cachedIDFMap;
             let df = {};
+            let totalDocumentLength = 0;
             shows.forEach(s => {
                 let t = ((s.summary||"") + " " + (s.genres||[]).join(" ")).toLowerCase();
-                let words = new Set(t.match(/\b[a-z]{4,}\b/g) || []);
+                let tokens = t.match(/\b[a-z]{4,}\b/g) || [];
+                totalDocumentLength += tokens.length;
+                let words = new Set(tokens);
                 words.forEach(w => df[w] = (df[w] || 0) + 1);
             });
             let idf = {};
@@ -4422,6 +4473,9 @@
             for(let w in df) {
                 idf[w] = Math.log10((N - df[w] + 0.5) / (df[w] + 0.5) + 1.0);
             }
+            Object.defineProperty(idf, '_avgdl', {
+                value: Math.max(1, totalDocumentLength / Math.max(1, N)), enumerable: false
+            });
             _cachedIDFMap = idf;
             _cachedIDFKey = key;
             return idf;
@@ -4436,7 +4490,7 @@
             dWords.forEach(w => tf[w] = (tf[w] || 0) + 1);
 
             let score = 0;
-            let k1 = 1.2, b = 0.75, dl = dWords.length, avgdl = 150;
+            let k1 = 1.2, b = 0.75, dl = dWords.length, avgdl = idfMap._avgdl || 150;
 
             qWords.forEach(qw => {
                 if(stopWords.includes(qw)) return;
@@ -4475,64 +4529,23 @@
             return scores;
         }
 
+        // Deterministic content-based score. This is deliberately not called a
+        // neural network: every component is a measurable similarity metric.
         function ensembleMachineLearning(uProf, sProf, sText, uText) {
-                    let uSum = uProf.reduce((a,b)=>a+b, 0);
+            const vectorCosine = algoCosine(uProf, sProf);
+            const jaccard = algoJaccard(uText, sText);
+            const dice = algoSorensenDice(uText, sText);
 
-                    // Sıfır-Eğitim (Zero-Shot) NLP Analizi: Kategori dışı serbest metin yazıldıysa
-                    if (uSum < 0.01 && uText && uText.trim().length > 0) {
-                        let wideScore = algoJaccard(uText, sText);
-                        let dice = algoSorensenDice(uText, sText);
-                        let tver = algoTversky(uText, sText);
-                        let kulc = algoKulczynski(uText, sText);
-                        return (wideScore * 0.35) + (dice * 0.35) + (tver * 0.15) + (kulc * 0.15);
-                    }
-
-            let transformerScore = algoTransformerAttention(uProf, sProf);
-            let ncfScore = algoNCF(uProf, sProf);
-            let deepScore = algoDeepLearningPerceptron(uProf, sProf);
-            let cosineScore = algoCosine(uProf, sProf);
-            let wideScore = algoJaccard(uText, sText);
-
-            // V2 HIZ: 5 çekirdek algoritmanın tahmini skorunu hesapla
-            let quickEstimate = (transformerScore * 0.25) + (ncfScore * 0.20) + (deepScore * 0.15) + (cosineScore * 0.10);
-
-            // Tahmini skor çok düşükse 18 minor algoritmayı atla (%10 agirlik = max 0.1 fark)
-            if (quickEstimate <= 0.02) {
-                return (transformerScore * 0.25) + (ncfScore * 0.20) + (wideScore * 0.20) + (deepScore * 0.15) + (cosineScore * 0.10) + (0.3 * 0.10);
+            // With a free-text-only request there may be no category vector.
+            if (uProf.reduce((sum, value) => sum + value, 0) < 0.01) {
+                return (jaccard * 0.55) + (dice * 0.45);
             }
 
-            let eSim = algoEuclidean(uProf, sProf);
-            let mSim = algoManhattan(uProf, sProf);
-            let pSim = algoPearson(uProf, sProf);
-            let mink = algoMinkowski(uProf, sProf, 3);
-            let cheb = algoChebyshev(uProf, sProf);
-            let dice = algoSorensenDice(uText, sText);
-            let hamm = algoHamming(uProf, sProf);
-            let canb = algoCanberra(uProf, sProf);
-            let bray = algoBrayCurtis(uProf, sProf);
-            let rbf = algoRBFKernel(uProf, sProf);
-            let poly = algoPolynomialKernel(uProf, sProf);
-            let sig = algoSigmoidKernel(uProf, sProf);
-            let inter = algoIntersection(uProf, sProf);
-            let hell = algoHellinger(uProf, sProf);
-            let bhat = algoBhattacharyya(uProf, sProf);
-            let expSim = algoExponential(uProf, sProf);
-            let tver = algoTversky(uText, sText);
-            let kulc = algoKulczynski(uText, sText);
-
-            let minorAvg = (eSim + mSim + pSim + mink + cheb + dice + hamm + canb + bray + rbf + poly + sig + inter + hell + bhat + expSim + tver + kulc) / 18;
-
-            return (transformerScore * 0.25) + (ncfScore * 0.20) + (wideScore * 0.20) + (deepScore * 0.15) + (cosineScore * 0.10) + (minorAvg * 0.10);
+            // Category profile is the reliable primary signal; lexical overlap
+            // adds specificity without pretending that a trained model exists.
+            return (vectorCosine * 0.70) + (jaccard * 0.18) + (dice * 0.12);
         }
 
-        function algoMinkowski(v1, v2, p) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.pow(Math.abs(v1[i] - v2[i]), p);
-            return 1 / (1 + Math.pow(sum, 1/p));
-        }
-        function algoChebyshev(v1, v2) {
-            let max = 0; for(let i=0; i<v1.length; i++) { let diff = Math.abs(v1[i]-v2[i]); if(diff>max) max=diff; }
-            return 1 / (1 + max);
-        }
         function algoSorensenDice(t1, t2) {
             let set1 = new Set((t1||"").toLowerCase().match(/\b[a-z]{4,}\b/g) || []);
             let set2 = new Set((t2||"").toLowerCase().match(/\b[a-z]{4,}\b/g) || []);
@@ -4540,84 +4553,6 @@
             let intersection = new Set([...set1].filter(x => set2.has(x)));
             return (2 * intersection.size) / (set1.size + set2.size);
         }
-        function algoHamming(v1, v2) {
-            let diff = 0; for(let i=0; i<v1.length; i++) if(Math.abs(v1[i]-v2[i]) > 0.1) diff++;
-            return 1 - (diff / v1.length);
-        }
-        function algoCanberra(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) {
-                let num = Math.abs(v1[i] - v2[i]); let den = Math.abs(v1[i]) + Math.abs(v2[i]);
-                if(den > 0) sum += num/den;
-            }
-            return 1 / (1 + sum);
-        }
-        function algoBrayCurtis(v1, v2) {
-            let num = 0, den = 0; for(let i=0; i<v1.length; i++) { num += Math.abs(v1[i]-v2[i]); den += Math.abs(v1[i]+v2[i]); }
-            return den === 0 ? 1 : 1 - (num/den);
-        }
-        function algoRBFKernel(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.pow(v1[i]-v2[i], 2);
-            return Math.exp(-1.0 * sum);
-        }
-        function algoPolynomialKernel(v1, v2) {
-            let dot = 0; for(let i=0; i<v1.length; i++) dot += v1[i]*v2[i];
-            let res = Math.pow(dot + 1, 2);
-            return Math.min(1, res / Math.pow(v1.length + 1, 2));
-        }
-        function algoSigmoidKernel(v1, v2) {
-            let dot = 0; for(let i=0; i<v1.length; i++) dot += v1[i]*v2[i];
-            return Math.max(0, Math.tanh(0.1 * dot));
-        }
-        function algoIntersection(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.min(v1[i], v2[i]);
-            return sum;
-        }
-        function algoHellinger(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.pow(Math.sqrt(Math.max(0,v1[i])) - Math.sqrt(Math.max(0,v2[i])), 2);
-            return 1 - ((1/Math.sqrt(2)) * Math.sqrt(sum));
-        }
-        function algoBhattacharyya(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.sqrt(Math.max(0,v1[i]) * Math.max(0,v2[i]));
-            return sum;
-        }
-        function algoExponential(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.abs(v1[i]-v2[i]);
-            return Math.exp(-sum);
-        }
-        function algoTversky(t1, t2) {
-            let set1 = new Set((t1||"").toLowerCase().match(/\b[a-z]{4,}\b/g) || []);
-            let set2 = new Set((t2||"").toLowerCase().match(/\b[a-z]{4,}\b/g) || []);
-            if(set1.size === 0 && set2.size === 0) return 0;
-            let inter = new Set([...set1].filter(x => set2.has(x))).size;
-            let diff1 = new Set([...set1].filter(x => !set2.has(x))).size;
-            let diff2 = new Set([...set2].filter(x => !set1.has(x))).size;
-            return inter / (inter + 0.5*diff1 + 0.5*diff2);
-        }
-        function algoKulczynski(t1, t2) {
-            let set1 = new Set((t1||"").toLowerCase().match(/\b[a-z]{4,}\b/g) || []);
-            let set2 = new Set((t2||"").toLowerCase().match(/\b[a-z]{4,}\b/g) || []);
-            if(set1.size === 0 || set2.size === 0) return 0;
-            let inter = new Set([...set1].filter(x => set2.has(x))).size;
-            return 0.5 * ((inter / set1.size) + (inter / set2.size));
-        }
-
-        function algoTransformerAttention(q, k) {
-            let dot = 0;
-            for(let i=0; i<q.length; i++) dot += q[i]*k[i];
-            let scaled = dot / Math.sqrt(q.length);
-            return Math.max(0, Math.min(1, Math.exp(scaled) / Math.exp(1)));
-        }
-
-        function algoNCF(u, i) {
-            let gmf = 0;
-            let mlp = 0;
-            for(let j=0; j<u.length; j++) {
-                gmf += (u[j] * i[j]);
-                mlp += Math.max(0, u[j] + i[j] - 0.5);
-            }
-            return (gmf * 0.5) + ((mlp/u.length) * 0.5);
-        }
-
         function algoCosine(v1, v2) {
             let dot = 0, n1 = 0, n2 = 0;
             for(let i=0; i<v1.length; i++) {
@@ -4634,38 +4569,6 @@
             let intersection = new Set([...set1].filter(x => set2.has(x)));
             let union = new Set([...set1, ...set2]);
             return intersection.size / union.size;
-        }
-
-        function algoEuclidean(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.pow(v1[i] - v2[i], 2);
-            return 1 / (1 + Math.sqrt(sum));
-        }
-
-        function algoManhattan(v1, v2) {
-            let sum = 0; for(let i=0; i<v1.length; i++) sum += Math.abs(v1[i] - v2[i]);
-            return 1 / (1 + sum);
-        }
-
-        function algoPearson(v1, v2) {
-            let n = v1.length; let s1=0, s2=0, s1Sq=0, s2Sq=0, pSum=0;
-            for(let i=0; i<n; i++) { s1+=v1[i]; s2+=v2[i]; s1Sq+=v1[i]**2; s2Sq+=v2[i]**2; pSum+=v1[i]*v2[i]; }
-            let num = pSum - (s1*s2/n);
-            let den = Math.sqrt((s1Sq - Math.pow(s1,2)/n) * (s2Sq - Math.pow(s2,2)/n));
-            return den === 0 ? 0 : Math.max(0, num/den);
-        }
-
-        function algoDeepLearningPerceptron(v1, v2) {
-            let hiddenNodes = 8;
-            let output = 0;
-            for(let i=0; i<hiddenNodes; i++) {
-                let nodeAct = 0;
-                for(let j=0; j<v1.length; j++) {
-                    let weight = Math.sin(i * j + 1);
-                    nodeAct += (v1[j] * v2[j]) * weight;
-                }
-                output += Math.tanh(nodeAct);
-            }
-            return Math.max(0, Math.min(1, (output / hiddenNodes + 1) / 2));
         }
 
         let userFeedback = JSON.parse(localStorage.getItem('heni_feedback')) || { likes: [], dislikes: [] };

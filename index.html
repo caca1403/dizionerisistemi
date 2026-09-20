@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://translate.googleapis.com https://api.mymemory.translated.net https://api.tvmaze.com https://api.jikan.moe https://itunes.apple.com https://en.wikipedia.org https://allorigins.win https://api.allorigins.win https://search.imdbot.workers.dev https://www.episodate.com;">
-    <link rel="icon" href="https://raw.githubusercontent.com/caca1403/dizionerisistemi/master/assets/seraai.ico" type="image/x-icon">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://translate.googleapis.com https://api.mymemory.translated.net https://api.tvmaze.com https://api.jikan.moe https://itunes.apple.com https://en.wikipedia.org https://allorigins.win https://api.allorigins.win https://search.imdbot.workers.dev https://www.episodate.com https://storage.googleapis.com;">
+    <link rel="icon" href="assets/sera-mark.svg" type="image/svg+xml">
     <title>SÉRA — Kişisel Dizi Keşfi</title>
     <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <!-- Yerel NLP katmanı; model ağırlıkları yalnızca tarayıcıda eğitilir. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
     <style>
         :root {
             --bg-color: #000000;
             --card-bg: #111111;
-            --primary: #e50914;
-            --secondary: #b81d24;
-            --primary-glow: rgba(229, 9, 20, 0.6);
+            --primary: #e4b971;
+            --secondary: #b78652;
+            --primary-glow: rgba(228, 185, 113, 0.6);
             --text-main: #f5f5f1;
             --text-muted: #a3a3a3;
         }
@@ -28,8 +30,8 @@
             align-items: center;
             min-height: 100vh;
         }
-        h1 { margin: 0; color: var(--text-main); font-size: 4em; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 4px 30px rgba(229,9,20,0.4); }
-        h1 span { color: var(--primary); text-shadow: 0 0 30px rgba(229,9,20,0.8); }
+        h1 { margin: 0; color: var(--text-main); font-size: 4em; font-weight: 900; letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 4px 30px rgba(228,185,113,0.4); }
+        h1 span { color: var(--primary); text-shadow: 0 0 30px rgba(228,185,113,0.8); }
         p.subtitle { color: var(--text-muted); margin-top: 6px; margin-bottom: 30px; font-size: 0.85em; letter-spacing: 3px; text-transform: uppercase; }
 
         .container {
@@ -106,7 +108,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
             width: 100%;
         }
-        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(229,9,20,0.7); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(228,185,113,0.7); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         #analyzeBtn {
@@ -140,7 +142,7 @@
         .badge { display: inline-block; padding: 5px 10px; border-radius: 5px; font-weight: bold; margin-bottom: 15px; margin-right: 10px; }
         .badge-imdb { background-color: rgba(245, 197, 24, 0.2); border: 1px solid #f5c518; color: #f5c518; }
         .badge-tmdb { background-color: rgba(1, 180, 228, 0.2); border: 1px solid #01b4e4; color: #01b4e4; }
-        .badge-prob { background-color: rgba(229, 9, 20, 0.2); border: 1px solid var(--primary); color: #ff4d4d; }
+        .badge-prob { background-color: rgba(228, 185, 113, 0.2); border: 1px solid var(--primary); color: #e4b971; }
         .badge-info { background-color: rgba(255, 255, 255, 0.1); border: 1px solid #aaa; color: #fff; }
 
         .btn-action {
@@ -158,8 +160,8 @@
         }
         .trailer-btn { background: #ff0000; }
         .trailer-btn:hover { background: #cc0000; }
-        .refresh-btn { background: #e50914; color: #fff; }
-        .refresh-btn:hover { background: #b81d24; }
+        .refresh-btn { background: #e4b971; color: #fff; }
+        .refresh-btn:hover { background: #b78652; }
         .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
         .btn-secondary:hover { background: rgba(255,255,255,0.2); }
 
@@ -178,7 +180,7 @@
         .btn-fav { background: rgba(255, 170, 0, 0.15); border: 1px solid #ffaa00; color: #ffaa00; }
         .btn-fav:hover { background: #ffaa00; color: #000; }
         .fav-item { background: rgba(255,255,255,0.03); padding: 15px; margin-bottom: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid gold; border-top: 1px solid var(--border-light); border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);}
-        .fav-remove { background: rgba(229, 9, 20, 0.1); padding: 8px 15px; border: 1px solid rgba(229,9,20,0.3); border-radius: 8px; color: #ff4d4d; cursor: pointer; font-weight: 600;}
+        .fav-remove { background: rgba(228, 185, 113, 0.1); padding: 8px 15px; border: 1px solid rgba(228,185,113,0.3); border-radius: 8px; color: #e4b971; cursor: pointer; font-weight: 600;}
         .fav-remove:hover { background: var(--primary); color: #fff;}
 
         .alt-shows-wrapper { width: 100%; margin-top: 30px; border-top: 1px solid #333; padding-top: 20px; }
@@ -207,10 +209,10 @@
         #customModalBox {
             background: var(--card-bg); border: 1px solid var(--primary);
             border-radius: 12px; padding: 25px; max-width: 500px; width: 90%;
-            box-shadow: 0 0 40px rgba(229, 9, 20, 0.4); text-align: center;
+            box-shadow: 0 0 40px rgba(228, 185, 113, 0.4); text-align: center;
             backdrop-filter: blur(20px);
         }
-        #customModalTitle { color: var(--primary); margin-top: 0; font-size: 22px; text-shadow: 0 0 10px rgba(229,9,20,0.5); }
+        #customModalTitle { color: var(--primary); margin-top: 0; font-size: 22px; text-shadow: 0 0 10px rgba(228,185,113,0.5); }
         #customModalMessage { color: #fff; font-size: 15px; margin: 20px 0; white-space: pre-wrap; text-align: left; max-height: 60vh; overflow-y: auto; line-height: 1.5; }
 
         #video-bg-container {
@@ -251,7 +253,7 @@
             cursor: pointer; transition: transform 0.3s ease, z-index 0.3s ease; box-shadow: 0 5px 20px rgba(0,0,0,0.6);
             background: #111; border: 1px solid rgba(255,255,255,0.05);
         }
-        .n-card:hover { transform: scale(1.08); z-index: 10; border-color: var(--primary); box-shadow: 0 5px 25px rgba(229,9,20,0.4); }
+        .n-card:hover { transform: scale(1.08); z-index: 10; border-color: var(--primary); box-shadow: 0 5px 25px rgba(228,185,113,0.4); }
         .n-card img { width: 100%; height: 100%; object-fit: cover; }
         .n-card-info {
             position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 100%); color: #fff;
@@ -411,17 +413,17 @@
             transition: opacity 0.8s ease;
         }
         #startupOverlay.hiding { opacity: 0; pointer-events: none; }
-        .startup-logo { font-size: 3.5em; font-weight: 900; letter-spacing: 8px; text-transform: uppercase; color: #f5f5f1; text-shadow: 0 0 30px rgba(229,9,20,0.5); }
-        .startup-logo span { color: #e50914; }
+        .startup-logo { font-size: 3.5em; font-weight: 900; letter-spacing: 8px; text-transform: uppercase; color: #f5f5f1; text-shadow: 0 0 30px rgba(228,185,113,0.5); }
+        .startup-logo span { color: #e4b971; }
         .startup-bar-wrap { width: 280px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
-        .startup-bar { height: 100%; width: 0%; background: #e50914; border-radius: 10px; transition: width 0.3s ease; box-shadow: 0 0 12px rgba(229,9,20,0.7); }
+        .startup-bar { height: 100%; width: 0%; background: #e4b971; border-radius: 10px; transition: width 0.3s ease; box-shadow: 0 0 12px rgba(228,185,113,0.7); }
         .startup-text { color: #aaa; font-size: 14px; letter-spacing: 0.5px; min-height: 20px; text-align: center; }
         .startup-counts { display: flex; gap: 30px; }
         .startup-count-item { text-align: center; }
-        .startup-count-item .num { font-size: 1.8em; font-weight: 900; color: #e50914; }
+        .startup-count-item .num { font-size: 1.8em; font-weight: 900; color: #e4b971; }
         .startup-count-item .lbl { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
 
-        .discovery-brief { display:grid; gap:7px; margin:0 0 22px; padding:13px 14px; border:1px solid rgba(229,9,20,.24); border-radius:13px; color:#c9c9c9; background:linear-gradient(135deg,rgba(229,9,20,.10),rgba(255,255,255,.025)); font-size:12px; line-height:1.35; }
+        .discovery-brief { display:grid; gap:7px; margin:0 0 22px; padding:13px 14px; border:1px solid rgba(228,185,113,.24); border-radius:13px; color:#c9c9c9; background:linear-gradient(135deg,rgba(228,185,113,.10),rgba(255,255,255,.025)); font-size:12px; line-height:1.35; }
         .discovery-brief span { display:flex; align-items:center; gap:7px; }
 
         /* Phone-first layout: reduce paint area and make the first screen usable
@@ -441,96 +443,228 @@
             .btn-group .btn-action { min-width: 118px; }
         }
 
-        /* SÉRA visual refresh */
-        :root { --surface:rgba(13,15,24,.78); --line:rgba(255,255,255,.10); --ink:#f8fafc; --soft:#a7afc1; }
-        body { padding:34px 24px 70px; align-items:stretch; background:radial-gradient(900px 520px at 10% -15%,rgba(228,9,20,.22),transparent 63%),radial-gradient(680px 420px at 92% 10%,rgba(119,47,255,.15),transparent 70%),#07080d; }
-        #main-bg-container { opacity:.24; filter:saturate(.7) contrast(1.08); }
-        .main-bg-overlay { background:linear-gradient(180deg,rgba(5,6,10,.62),rgba(5,6,10,.94)); }
-        .sera-hero { width:min(1120px,100%); margin:0 auto 22px; padding:18px 4px 8px; }
-        .sera-brand { display:flex; align-items:center; gap:13px; }
-        .brand-mark { display:grid; place-items:center; width:42px; height:42px; border:1px solid rgba(255,255,255,.18); border-radius:14px; color:#fff; background:linear-gradient(145deg,#ff5a38,#c90820 68%); box-shadow:0 12px 28px rgba(229,9,20,.3); font-family:Georgia,serif; font-size:1.45rem; font-weight:900; }
-        h1 { margin:0; color:var(--ink); font-size:clamp(2.3rem,5vw,3.7rem); letter-spacing:-.075em; line-height:.92; text-shadow:none; }
-        h1 span { color:#ff604b; text-shadow:0 0 26px rgba(255,62,75,.4); }
-        p.subtitle { max-width:600px; margin:13px 0 0 56px; color:var(--soft); font-size:.86rem; letter-spacing:.04em; line-height:1.55; text-transform:none; }
-        .hero-signals { display:flex; flex-wrap:wrap; gap:8px; margin:17px 0 0 56px; }
-        .hero-signals span { padding:7px 10px; border:1px solid var(--line); border-radius:999px; color:#d6dae4; background:rgba(9,10,16,.55); font-size:.68rem; font-weight:700; backdrop-filter:blur(10px); }
-        .sera-app { width:min(1120px,100%); margin:0 auto; }
-        .container { max-width:none; overflow:visible; border:1px solid var(--line); border-radius:24px; background:linear-gradient(135deg,rgba(22,24,37,.90),rgba(8,10,17,.88)); box-shadow:0 28px 80px rgba(0,0,0,.45); backdrop-filter:blur(18px); }
-        .nav-tabs { gap:7px; padding:10px; overflow-x:auto; border:0; border-radius:24px 24px 0 0; background:rgba(4,5,10,.54); scrollbar-width:none; }
-        .nav-tabs::-webkit-scrollbar { display:none; }
-        .nav-tab { flex:1 0 auto !important; min-width:auto; margin:0; padding:12px 15px; border:1px solid transparent; border-radius:12px; color:#98a1b3; font-size:.78rem; letter-spacing:.01em; }
-        .nav-tab:hover { color:#fff; background:rgba(255,255,255,.06); transform:none; box-shadow:none; }
-        .nav-tab.active { border-color:rgba(255,90,93,.28); color:#fff; background:linear-gradient(135deg,rgba(229,9,20,.33),rgba(247,83,89,.12)); box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 7px 22px rgba(0,0,0,.18); }
-        .nav-tab span { padding:2px 6px; border-radius:99px; background:#ed3341; font-size:10px; }
-        .container-body { max-width:none; padding:38px; }
-        label { color:#cbd2df; font-size:.74rem; letter-spacing:.035em; }
-        input,select { margin:7px 0 19px; padding:14px 15px; border-color:var(--line); border-radius:12px; background:rgba(5,7,13,.62); color:#f8fafc; box-shadow:inset 0 1px 0 rgba(255,255,255,.025); }
-        input:focus,select:focus { border-color:#ff5a62; box-shadow:0 0 0 3px rgba(255,62,75,.13); }
-        .filter-section { display:grid; gap:0; margin:16px 0 22px; padding:18px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.025); }
-        button,#analyzeBtn { border:1px solid rgba(255,106,98,.46); border-radius:12px; background:linear-gradient(135deg,#e50914,#ff5a45); box-shadow:0 12px 26px rgba(229,9,20,.22); }
-        button:hover,#analyzeBtn:hover { transform:translateY(-1px); box-shadow:0 16px 34px rgba(229,9,20,.30); }
-        .discovery-intro { display:flex; align-items:center; justify-content:space-between; gap:25px; margin:0 0 24px; padding:4px 2px; }
-        .section-eyebrow { display:block; margin-bottom:8px; color:#ff7464; font-size:.62rem; font-weight:900; letter-spacing:.17em; }
-        .discovery-intro h2 { max-width:490px; margin:0; color:#fff; font-size:clamp(1.5rem,3vw,2.15rem); line-height:1.06; letter-spacing:-.04em; }
-        .discovery-intro p { max-width:520px; margin:11px 0 0; color:var(--soft); font-size:.82rem; line-height:1.6; }
-        .intro-orbit { display:grid; width:82px; height:82px; flex:none; place-items:center; border:1px solid rgba(255,104,99,.38); border-radius:50%; color:#ff735e; background:radial-gradient(circle,rgba(229,9,20,.22),transparent 65%); animation:seraPulse 4s ease-in-out infinite; font-size:1.4rem; }
-        @keyframes seraPulse { 50% { transform:scale(1.06) rotate(6deg); } }
-        .discovery-brief { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin:0 0 22px; padding:0; border:0; border-radius:0; background:transparent; }
-        .discovery-brief span { min-height:48px; align-items:flex-start; padding:10px; border:1px solid var(--line); border-radius:11px; color:#bac2d0; background:rgba(255,255,255,.025); font-size:.68rem; }
-        #result { max-width:1120px !important; margin:26px auto 0; }
-        .result-layout { border:1px solid var(--line); border-radius:22px; background:rgba(13,15,24,.88); box-shadow:0 22px 60px rgba(0,0,0,.32); }
-        .n-card { border-color:rgba(255,255,255,.09); border-radius:15px; }
-        .n-card:hover { transform:translateY(-6px) scale(1.025); border-color:rgba(255,92,86,.55); }
-        @media (max-width:700px) { body { padding:18px 12px 42px; } .sera-hero { padding:8px 4px 12px; } .brand-mark { width:36px; height:36px; border-radius:12px; font-size:1.2rem; } p.subtitle,.hero-signals { margin-left:0; } .hero-signals { margin-top:13px; gap:6px; } .hero-signals span { padding:6px 8px; font-size:.61rem; } .container { border-radius:18px; } .nav-tabs { padding:8px; border-radius:18px 18px 0 0; } .nav-tab { flex-basis:142px !important; padding:11px 12px; font-size:.71rem; } .container-body { padding:24px 17px; } .discovery-intro { align-items:flex-start; } .intro-orbit { width:56px; height:56px; } .discovery-intro p { font-size:.77rem; } .discovery-brief { grid-template-columns:1fr; } .discovery-brief span { min-height:auto; } .add-row { gap:8px !important; } .add-row button { flex-basis:48px !important; width:48px !important; font-size:25px !important; } }
+        /* ── SÉRA 2026: single-source visual system ─────────────────────── */
+        :root { --primary:var(--acid); --secondary:#b78652; --primary-glow:rgba(228,185,113,.25); --bg:#101110; --surface:#181a18; --surface-2:#202320; --line:rgba(244,245,236,.15); --line-strong:rgba(244,245,236,.32); --ink:#f4f5ec; --muted:#aaaea2; --acid:#e4b971; --acid-ink:#14160e; --red:#ff5e50; }
+        * { box-sizing:border-box; }
+        body { min-width:0; padding:0 24px 70px; background:var(--bg); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:radial-gradient(700px 260px at 86% 4%,rgba(228,185,113,.07),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.018),transparent 38%); }
+        #main-bg-container { display:none !important; }
+
+        .sera-hero { display:grid; grid-template-columns:minmax(0,1.34fr) minmax(285px,.66fr); gap:48px; width:min(1320px,100%); min-height:430px; margin:0 auto; padding:42px 0 40px; border-bottom:1px solid var(--line); }
+        .sera-hero-copy { display:flex; flex-direction:column; align-items:flex-start; }
+        .sera-brand { display:flex; align-items:center; gap:10px; color:var(--ink); }
+        .brand-mark { display:grid; width:30px; height:30px; place-items:center; border-radius:50%; background:var(--acid); color:#16180e; font-family:Georgia,serif; font-size:1rem; font-weight:800; }
+        .brand-word { font-size:.88rem; font-weight:850; letter-spacing:.08em; }
+        .brand-index { color:#81877c; font:700 .63rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.12em; }
+        .hero-kicker { margin:66px 0 15px; color:var(--acid); font:700 .62rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.16em; }
+        h1 { max-width:760px; margin:0; color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:clamp(3.2rem,6.1vw,6.3rem); font-weight:400; letter-spacing:-.082em; line-height:.87; text-transform:none; text-shadow:none; }
+        h1 span { color:inherit; text-shadow:none; }
+        h1 em { color:var(--acid); font-style:italic; }
+        p.subtitle { max-width:575px; margin:26px 0 0; color:#c1c5b9; font-size:.93rem; letter-spacing:0; line-height:1.65; text-transform:none; }
+        .hero-signals { display:flex; flex-wrap:wrap; gap:7px; margin:27px 0 0; }
+        .hero-signals span { padding:7px 9px; border:1px solid var(--line); border-radius:0; color:#d4d8cc; background:transparent; font:700 .59rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; }
+
+        .hero-console { align-self:end; min-height:280px; padding:18px; border:1px solid var(--line); background:var(--surface); }
+        .console-top,.console-foot { display:flex; justify-content:space-between; align-items:center; color:#aeb3a5; font:700 .57rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.12em; }
+        .console-top b { display:flex; align-items:center; gap:6px; color:var(--acid); font-weight:800; }
+        .console-top i { width:6px; height:6px; border-radius:50%; background:var(--acid); box-shadow:0 0 12px var(--acid); }
+        .console-main { display:flex; align-items:flex-end; gap:17px; margin:44px 0 35px; }
+        .console-number { color:var(--acid); font-family:Georgia,serif; font-size:5.2rem; line-height:.72; letter-spacing:-.08em; }
+        .console-main strong { display:block; color:var(--ink); font-size:.88rem; }
+        .console-main small { display:block; margin-top:7px; color:#91978b; font-size:.67rem; }
+        .console-meter { display:grid; grid-template-columns:repeat(6,1fr); align-items:end; gap:5px; height:56px; padding:0 0 17px; border-bottom:1px solid var(--line); }
+        .console-meter i { display:block; height:100% !important; border:1px solid rgba(228,185,113,.42); background:linear-gradient(135deg,rgba(228,185,113,.30),rgba(228,185,113,.04)); }
+        .console-meter i:nth-child(2n) { transform:translateY(-7px); background:rgba(228,185,113,.70); }.console-meter i:nth-child(3n) { background:rgba(244,245,236,.10); }
+        .console-foot { margin-top:15px; color:#8d9388; font-size:.5rem; }
+
+        .sera-app { width:min(1320px,100%); margin:0 auto; }
+        .container { width:100%; max-width:none; overflow:visible; border:0; border-radius:0; background:transparent; box-shadow:none; }
+        .nav-tabs { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:0; overflow:visible; padding:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; cursor:default; }
+        .nav-tabs::before { display:none; }
+        .nav-tab { position:relative; display:flex; align-items:center; justify-content:flex-start; min-width:0 !important; width:auto !important; min-height:68px; margin:0; padding:0 8px; border:0; border-radius:0; border-bottom:2px solid transparent; color:#a6aba0; background:transparent; font-size:.72rem; font-weight:750; letter-spacing:.015em; text-align:left; white-space:nowrap; box-shadow:none; }
+        .nav-tab::after { content:""; position:absolute; right:10px; width:7px; height:7px; border-radius:50%; background:transparent; transition:background .18s ease; }
+        .nav-tab:hover { color:#f3f5eb; background:transparent; box-shadow:none; transform:none; }
+        .nav-tab.active { border-bottom-color:var(--acid); color:var(--acid); background:transparent; box-shadow:none; }
+        .nav-tab.active::after { background:var(--acid); box-shadow:0 0 11px rgba(228,185,113,.65); }
+        .nav-tab span { margin-left:6px; padding:2px 5px; border-radius:2px; color:var(--acid-ink); background:var(--acid); font-size:.57rem; }
+
+        .container-body { max-width:1040px; margin:0 auto; padding:68px 0 42px; text-align:left; }
+        .active-view-indicator { display:flex; align-items:center; gap:9px; margin:0 0 42px; padding:0; border:0; }
+        .active-view-indicator::before { content:"01/"; color:var(--acid); font:700 .6rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; }
+        .active-view-indicator span { color:#899084; font:700 .59rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em; }
+        .active-view-indicator strong { color:#edf0e6; font-size:.77rem; font-weight:750; }
+        .view-section { max-width:100%; text-align:left; }
+        .view-section.active { animation:seraReveal .35s cubic-bezier(.2,.8,.2,1); }
+        @keyframes seraReveal { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
+        .discovery-intro { display:grid; grid-template-columns:minmax(0,1fr) 155px; align-items:end; gap:38px; margin:0; padding:0 0 42px; border-bottom:1px solid var(--line); }
+        .section-eyebrow { display:block; margin:0 0 16px; color:var(--acid); font:700 .63rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.16em; }
+        .discovery-intro h2 { max-width:690px; margin:0; color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:clamp(2.35rem,5vw,4.6rem); font-weight:400; letter-spacing:-.072em; line-height:.91; }
+        .discovery-intro p { max-width:590px; margin:21px 0 0; color:#acb1a6; font-size:.9rem; line-height:1.7; }
+        .intro-orbit { display:grid; width:132px; height:132px; place-items:center; border:1px solid var(--acid); border-radius:0; color:var(--acid); background:transparent; font-size:1.9rem; animation:none; transform:none; }
+        .discovery-brief { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; margin:0 0 45px; padding:0; border:0; border-radius:0; background:transparent; }
+        .discovery-brief span { min-height:86px; padding:18px 20px 15px 0; border:0; border-right:1px solid var(--line); border-radius:0; color:#c4c9bd; background:transparent; font-size:.69rem; line-height:1.45; }
+        .discovery-brief span + span { padding-left:20px; }
+        .discovery-brief span:last-child { border-right:0; }
+
+        label { display:block; margin-bottom:9px; color:#e1e4da; font-size:.64rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase; }
+        input,select { width:100%; margin:0 0 27px; padding:15px 15px; border:1px solid var(--line); border-radius:0; background:#151715; color:var(--ink); box-shadow:none; font-size:.88rem; }
+        input:focus,select:focus { border-color:var(--acid); background:#121411; box-shadow:0 0 0 3px rgba(228,185,113,.10); }
+        .add-row { display:flex; gap:0 !important; margin:0 0 7px !important; border-bottom:1px solid var(--line-strong); background:transparent; }
+        .add-row input { margin:0 !important; padding:14px 0 !important; border:0 !important; background:transparent !important; }
+        .add-row button { flex:0 0 48px !important; width:48px !important; min-height:48px; padding:0 !important; border:1px solid var(--acid) !important; border-radius:0 !important; color:var(--acid-ink) !important; background:var(--acid) !important; box-shadow:none !important; }
+        #tagList { min-height:34px; margin:13px 0 29px !important; }
+        #tagList span { border-color:rgba(228,185,113,.36) !important; border-radius:0 !important; color:#e5e9dd; background:rgba(228,185,113,.08) !important; }
+        .filter-section { display:grid; grid-template-columns:1fr 1fr; column-gap:16px; margin:0 0 28px; padding:0; border:0; border-radius:0; background:transparent; }
+        .filter-section label:nth-of-type(2) { grid-column:2; grid-row:1; margin-top:0 !important; }
+        .filter-section select { margin:0; }
+        .filter-section select:nth-of-type(2) { grid-column:2; grid-row:2; }
+        button,#analyzeBtn { min-height:54px; border:1px solid var(--acid); border-radius:0; color:var(--acid-ink); background:var(--acid); box-shadow:none; font-size:.74rem; font-weight:850; letter-spacing:.065em; }
+        button:hover,#analyzeBtn:hover { border-color:#ffe6b8; background:#e5ff80; box-shadow:none; transform:none; }
+        #analyzeBtnFav,#analyzeBtnCat { text-transform:uppercase; }
+        #analyzeBtnFav + button { margin-top:9px !important; border-color:var(--line); color:#c8ccc2; background:transparent; }
+        #analyzeBtnFav + button:hover { border-color:var(--line-strong); background:rgba(255,255,255,.03); }
+
+        #result { width:min(1320px,100%) !important; max-width:none !important; margin:45px auto 0; }
+        .result-container { padding:0; border:0; border-radius:0; background:transparent; }
+        .result-container > div:first-child { margin-bottom:20px !important; padding:0 0 17px 0 !important; border-bottom:1px solid var(--line) !important; border-left:0 !important; }
+        .result-container h2 { color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:2rem; font-weight:400; letter-spacing:-.05em; }
+        #neuralEngineStatus { color:#aab691 !important; font:700 .6rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.035em; }
+        .sort-container select,.sort-container button { min-height:36px; padding:7px 10px !important; border-radius:0 !important; font-size:.65rem !important; }
+        .n-card { border:1px solid var(--line); border-radius:0; background:#171917; box-shadow:none; }
+        .n-card:hover { border-color:var(--acid); box-shadow:none; transform:translateY(-4px); }
+        .n-card::after { background:linear-gradient(180deg,transparent 30%,rgba(14,16,14,.97)); }
+        .n-card .n-info { background:#171917; }
+
+        .modal-overlay { background:rgba(7,8,7,.88); backdrop-filter:blur(13px); }
+        .modal-content { border:1px solid var(--line); border-radius:0; background:#171917; box-shadow:0 28px 80px rgba(0,0,0,.6); }
+        .modal-content::after { background:linear-gradient(180deg,transparent 30%,#171917 100%); }
+        .modal-body h2,#customModalTitle { font-family:Georgia,"Times New Roman",serif; }
+        .detail-kicker,.dialog-kicker { color:var(--acid); }
+        .modal-actions .btn-action,#modalOkBtn,#modalCancelBtn { border-radius:0 !important; }
+        .modal-actions .btn-secondary { color:#d9ddd2; background:#202320; border-color:var(--line); }
+        .modal-actions .trailer-btn { color:white; background:#e94639; border-color:#e94639; }
+        #customModalBox { border:1px solid var(--line); border-radius:0; background:#171917; box-shadow:0 28px 80px rgba(0,0,0,.65); }
+        #customModalBox::before { background:radial-gradient(circle,rgba(228,185,113,.12),transparent 70%); }
+
+        @media (max-width:760px) {
+            body { padding:0 15px 42px; }
+            .sera-hero { display:block; min-height:0; padding:25px 0 29px; } .hero-kicker { margin-top:52px; }
+            h1 { font-size:clamp(3.2rem,15vw,5rem); } p.subtitle { font-size:.84rem; }
+            .hero-console { min-height:220px; margin-top:34px; } .console-main { margin:30px 0 27px; }
+            .nav-tabs { display:flex !important; grid-template-columns:none !important; overflow-x:auto !important; scrollbar-width:none; } .nav-tabs::-webkit-scrollbar { display:none; }
+            .nav-tab { width:auto !important; min-width:126px !important; flex:0 0 auto !important; min-height:58px; font-size:.67rem; }
+            .container-body { padding:42px 0 28px; } .active-view-indicator { margin-bottom:31px; }
+            .discovery-intro { display:block; padding-bottom:31px; } .discovery-intro h2 { font-size:clamp(2.55rem,13vw,4rem); } .intro-orbit { display:none; }
+            .discovery-brief { grid-template-columns:1fr; margin-bottom:30px; } .discovery-brief span,.discovery-brief span + span { min-height:auto; padding:13px 0; border-right:0; border-bottom:1px solid var(--line); } .discovery-brief span:last-child { border-bottom:0; }
+            .filter-section { grid-template-columns:1fr; gap:0; } .filter-section label:nth-of-type(2),.filter-section select:nth-of-type(2) { grid-column:auto; grid-row:auto; } .filter-section label:nth-of-type(2) { margin-top:22px !important; }
+            .result-container > div:first-child { align-items:flex-start !important; flex-direction:column; } .sort-container { width:100%; } .sort-container select { flex:1; }
+        }
         @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
 
-        .nav-tab.active { border-color:rgba(255,255,255,.26); color:#fff; background:linear-gradient(135deg,#e50914,#ff5848); box-shadow:0 9px 25px rgba(229,9,20,.38),inset 0 1px 0 rgba(255,255,255,.22); }
-        .active-view-indicator { display:flex; align-items:baseline; gap:9px; margin:0 0 25px; padding-bottom:13px; border-bottom:1px solid rgba(255,255,255,.09); }
-        .active-view-indicator span { color:#ff7669; font-size:.59rem; font-weight:900; letter-spacing:.16em; }
-        .active-view-indicator strong { color:#f8fafc; font-size:.95rem; letter-spacing:-.01em; }
-        .active-view-indicator.is-changing { animation:viewIndicatorIn .32s cubic-bezier(.16,1,.3,1); }
-        .view-section.active { animation:viewSectionIn .34s cubic-bezier(.16,1,.3,1); }
-        @keyframes viewIndicatorIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
-        @keyframes viewSectionIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        /* Legacy inline controls inherit the same visual grammar. */
+        #view-trend button[style],#view-search button[style],#view-sets button[style],#loader button[style] { color:var(--acid-ink) !important; border-color:var(--acid) !important; background:var(--acid) !important; border-radius:0 !important; box-shadow:none !important; }
+        #view-trend button[style]:hover,#view-search button[style]:hover,#view-sets button[style]:hover,#loader button[style]:hover { background:#f2d69b !important; }
+        #customModalMessage button { border-radius:0 !important; color:var(--acid-ink) !important; background:var(--acid) !important; }
+        .fav-remove { color:var(--acid) !important; border-color:rgba(228,185,113,.35) !important; background:rgba(228,185,113,.08) !important; }
+        .fav-remove:hover { color:var(--acid-ink) !important; background:var(--acid) !important; }
 
-        /* SÉRA selection dialog and title dossier */
-        #customModalOverlay { padding:22px; background:rgba(2,4,10,.78); backdrop-filter:blur(18px) saturate(1.15); }
-        #customModalBox { position:relative; width:min(680px,100%); max-width:680px; max-height:min(780px,calc(100dvh - 44px)); padding:30px; overflow:hidden; border:1px solid rgba(255,116,102,.32); border-radius:24px; background:linear-gradient(145deg,rgba(23,27,41,.98),rgba(7,9,15,.98)); box-shadow:0 35px 120px rgba(0,0,0,.72),0 0 0 1px rgba(255,255,255,.03) inset; text-align:left; }
-        #customModalBox::before { content:''; position:absolute; width:260px; height:260px; top:-180px; right:-105px; border-radius:50%; background:radial-gradient(circle,rgba(255,77,75,.3),transparent 70%); pointer-events:none; }
-        .dialog-kicker,.detail-kicker { position:relative; margin:0 0 8px; color:#ff8475; font-size:.62rem; font-weight:900; letter-spacing:.18em; }
-        #customModalTitle { position:relative; margin:0; color:#f8fafc; font-size:clamp(1.35rem,3vw,1.95rem); line-height:1.15; text-shadow:none; }
-        #customModalMessage { position:relative; display:grid; gap:10px; margin:18px 0 20px; padding-right:5px; color:#bac2d0; font-size:.82rem; max-height:min(490px,58dvh); line-height:1.55; }
-        #customModalMessage > p { margin:0 0 7px !important; color:#aeb7c7 !important; }
-        .picker-option { position:relative; min-height:86px; margin:0 0 8px !important; padding:11px !important; border:1px solid rgba(255,255,255,.09) !important; border-radius:15px !important; background:rgba(255,255,255,.035) !important; }
-        .picker-option:hover { transform:translateX(3px); border-color:rgba(255,120,106,.55) !important; background:linear-gradient(90deg,rgba(229,9,20,.18),rgba(255,255,255,.04)) !important; }
-        .picker-option img { width:50px !important; height:66px !important; border-radius:10px !important; box-shadow:0 6px 18px rgba(0,0,0,.36); }
-        .picker-option-manual { min-height:auto; border-style:dashed !important; color:#cfd6e3; }
-        #modalOkBtn,#modalCancelBtn { width:auto !important; min-width:124px; margin:0 5px 0 0 !important; padding:11px 17px !important; }
-        .modal-overlay { padding:20px; background:rgba(2,4,10,.82); backdrop-filter:blur(18px) saturate(1.1); }
-        .modal-content { width:min(960px,100%); max-width:960px; max-height:calc(100dvh - 40px); border:1px solid rgba(255,255,255,.12); border-radius:26px; background:linear-gradient(145deg,#151927,#080a11 68%); box-shadow:0 38px 130px rgba(0,0,0,.78); }
-        .modal-content::after { content:''; position:absolute; z-index:0; top:0; right:0; left:0; height:300px; pointer-events:none; background:linear-gradient(180deg,transparent 30%,#11141e 100%); }
-        .modal-header-img { position:relative; z-index:0; height:300px; opacity:.76; border:0; object-position:center 22%; filter:saturate(.82) contrast(1.06); }
-        .close-btn { top:17px; right:17px; width:42px; height:42px; color:#fff; background:rgba(5,7,13,.72); border-color:rgba(255,255,255,.24); backdrop-filter:blur(10px); font-size:27px; }
-        .modal-body { position:relative; z-index:1; margin-top:-76px; padding:0 34px 34px; }
-        .detail-kicker { margin-bottom:8px; }
-        .modal-body h2 { max-width:740px; margin:0 0 18px; color:#fff; font-size:clamp(2rem,5vw,3.25rem); letter-spacing:-.055em; line-height:1; text-shadow:0 5px 26px rgba(0,0,0,.6); }
-        .modal-badges { gap:8px; margin-bottom:20px; }
-        .modal-badges .badge { margin:0; padding:7px 10px; border-radius:999px; background:rgba(5,8,14,.66); font-size:.72rem; }
-        #m-watch-providers { padding:11px 0 18px; border-bottom:1px solid rgba(255,255,255,.09); }
-        .modal-summary { max-width:820px; margin:22px 0 26px; color:#cad1dd; font-size:.96rem; line-height:1.75; }
-        .cast-slider { gap:12px; margin:12px 0 28px; padding:6px 2px 13px; }
-        .cast-card { flex-basis:88px; padding:5px 0; }
-        .cast-img { width:76px; height:76px; margin-bottom:8px; border:2px solid rgba(255,255,255,.15); box-shadow:0 8px 18px rgba(0,0,0,.25); }
-        .cast-name { font-size:.71rem; }.cast-role { font-size:.61rem; color:#8590a3; }
-        .modal-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; padding-top:20px; border-top-color:rgba(255,255,255,.1); }
-        .modal-actions .btn-action { display:flex; align-items:center; justify-content:center; min-width:0; min-height:46px; margin:0; padding:10px 8px; border-radius:12px; font-size:.74rem; line-height:1.1; box-shadow:none; }
-        .modal-actions .trailer-btn { background:linear-gradient(135deg,#ed2939,#ff654f); }.modal-actions .btn-secondary { background:rgba(255,255,255,.055); }
-        .alt-shows-wrapper { padding-top:24px; border-top-color:rgba(255,255,255,.09); }.alt-card { padding:8px; border-radius:13px; background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.09); }.alt-card-img-wrapper { border-radius:9px; }
-        @media (max-width:640px) { #customModalOverlay { align-items:end; padding:10px; } #customModalBox { max-height:calc(100dvh - 20px); padding:23px 17px 17px; border-radius:21px; } #customModalMessage { max-height:55dvh; } .modal-overlay { padding:8px; align-items:end; } .modal-content { max-height:calc(100dvh - 16px); border-radius:22px 22px 16px 16px; } .modal-header-img { height:230px; } .modal-content::after { height:230px; } .modal-body { margin-top:-52px; padding:0 18px 22px; } .modal-body h2 { font-size:2rem; } .modal-badges { gap:6px; } .modal-badges .badge { padding:6px 8px; font-size:.65rem; } .modal-summary { font-size:.86rem; line-height:1.65; } .modal-actions { grid-template-columns:repeat(2,minmax(0,1fr)); } .modal-actions .btn-action { min-height:44px; font-size:.7rem; } .cast-card { flex-basis:76px; } .cast-img { width:66px; height:66px; } }
-        /* Navigation is a compact mode switcher, never a full-width action button. */
-        .nav-tabs { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); overflow:visible; }
-        .nav-tab { width:auto !important; min-width:0; flex:unset !important; white-space:nowrap; }
-        @media (max-width:700px) { .nav-tabs { display:flex; overflow-x:auto; } .nav-tab { flex:0 0 auto !important; width:auto !important; min-width:136px; } }
+        /* Handheld depth: small fixed layers instead of hover-only desktop perspective. */
+        @media (max-width:760px) {
+            .discovery-journey { perspective:900px !important; transform-style:preserve-3d; }
+            .journey-card,.journey-card:nth-child(n) { transform-style:preserve-3d !important; box-shadow:0 16px 0 rgba(0,0,0,.17),0 27px 42px rgba(0,0,0,.20) !important; }
+            .journey-card:nth-child(1) { transform:translateZ(16px) rotateX(.8deg) !important; }
+            .journey-card:nth-child(2) { transform:translateZ(8px) translateX(5px) rotateX(.5deg) !important; }
+            .journey-card:nth-child(3) { transform:translateZ(12px) rotateX(.8deg) !important; }
+            .journey-card::before { content:""; position:absolute; inset:7px -7px -7px 7px; z-index:-1; border:1px solid rgba(228,185,113,.14); background:#0c0e0c; }
+            .modal-content { perspective:900px !important; transform-style:preserve-3d; box-shadow:0 24px 0 rgba(0,0,0,.2),0 38px 65px rgba(0,0,0,.42) !important; }
+            .modal-header-img { transform:translateZ(-8px) scale(1.01) !important; }
+            .modal-body { transform:translateZ(16px) !important; }
+            #customModalBox { transform:perspective(900px) translateZ(8px) rotateX(.45deg); box-shadow:0 18px 0 rgba(0,0,0,.16),0 31px 58px rgba(0,0,0,.42) !important; }
+            .picker-option { transform:translateZ(7px) !important; box-shadow:0 8px 0 rgba(0,0,0,.14) !important; }
+        }
+
+
+        /* Scroll-stage presentation: depth is decorative and never required for interaction. */
+        .discovery-journey { position:relative; display:grid; gap:14px; margin:34px 0 40px; perspective:1100px; }
+        .discovery-journey::before { content:""; position:absolute; top:14%; bottom:14%; left:31px; width:1px; background:linear-gradient(var(--acid),transparent); }
+        .journey-card { position:relative; display:grid; grid-template-columns:64px minmax(0,1fr) 32px; align-items:center; gap:16px; min-height:126px; padding:23px 24px; overflow:hidden; border:1px solid var(--line); background:linear-gradient(120deg,#191c19,#121412); box-shadow:18px 22px 0 rgba(0,0,0,.15); transform-origin:center top; transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .35s ease,box-shadow .35s ease; }
+        .journey-card::after { content:""; position:absolute; width:180px; height:180px; right:-90px; top:-95px; border:1px solid rgba(228,185,113,.22); border-radius:50%; box-shadow:0 0 0 22px rgba(228,185,113,.025); }
+        .journey-card:nth-child(1) { margin-right:12%; transform:rotateX(3deg) rotateY(-1.7deg); }
+        .journey-card:nth-child(2) { margin-left:6%; margin-right:6%; transform:rotateX(2deg) rotateY(1.6deg); }
+        .journey-card:nth-child(3) { margin-left:12%; transform:rotateX(3deg) rotateY(-1.7deg); }
+        .journey-card:hover { z-index:2; border-color:rgba(228,185,113,.62); box-shadow:24px 30px 0 rgba(0,0,0,.22),0 22px 45px rgba(0,0,0,.25); transform:translateY(-5px) rotateX(0) rotateY(0); }
+        .journey-no { position:relative; z-index:1; color:var(--acid); font:400 3.5rem/.8 Georgia,"Times New Roman",serif; letter-spacing:-.09em; }
+        .journey-card small { display:block; margin-bottom:8px; color:#9da493; font:700 .57rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.16em; }
+        .journey-card h3 { margin:0; color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:1.35rem; font-weight:400; letter-spacing:-.035em; }
+        .journey-card p { max-width:520px; margin:7px 0 0; color:#a8aea3; font-size:.75rem; line-height:1.55; }
+        .journey-card b { position:relative; z-index:1; color:var(--acid); font-size:1rem; font-weight:400; }
+        .modal-content { perspective:1200px; transform-style:preserve-3d; }
+        .modal-header-img { transform:translateZ(-12px) scale(1.015); }
+        .modal-body { transform:translateZ(24px); }
+        #customModalBox { perspective:1000px; }
+        .picker-option { transform:rotateX(2deg); transform-origin:center top; transition:transform .25s ease,border-color .25s ease,background .25s ease !important; }
+        .picker-option:hover { transform:translateY(-3px) rotateX(0deg) !important; box-shadow:12px 15px 0 rgba(0,0,0,.18); }
+        @media (max-width:760px) { .discovery-journey { gap:10px; margin:28px 0 32px; perspective:none; }.discovery-journey::before { left:22px; }.journey-card,.journey-card:nth-child(n) { grid-template-columns:46px minmax(0,1fr) 20px; min-height:0; margin:0; padding:17px 15px; transform:none; box-shadow:8px 10px 0 rgba(0,0,0,.14); }.journey-card:hover { transform:none; }.journey-no { font-size:2.55rem; }.journey-card h3 { font-size:1.12rem; }.journey-card p { font-size:.7rem; }.modal-header-img { transform:none; }.modal-body { transform:none; }.picker-option { transform:none; }.picker-option:hover { transform:none !important; box-shadow:none; } }
+
+        /* Shared brand surfaces: startup, dossier and selection dialog. */
+        #startupOverlay { background:var(--bg); gap:23px; }
+        #startupOverlay::before { content:"SÉRA / LOCAL DISCOVERY"; position:absolute; top:28px; left:30px; color:#959b8e; font:700 .58rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.16em; }
+        #startupOverlay::after { content:"YÜKLENİYOR"; position:absolute; right:30px; bottom:28px; color:var(--acid); font:700 .58rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.16em; }
+        .startup-logo { color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:clamp(3.5rem,9vw,6.7rem); font-weight:400; letter-spacing:-.1em; text-shadow:none; }
+        .startup-logo span { color:var(--acid); }
+        .startup-bar-wrap { width:min(360px,76vw); height:2px; background:rgba(244,245,236,.15); border-radius:0; }
+        .startup-bar { background:var(--acid); border-radius:0; box-shadow:none; }
+        .startup-text { color:#b8bdb2; font-size:.76rem; letter-spacing:.04em; }
+        .startup-counts { width:min(560px,88vw); gap:0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+        .startup-count-item { flex:1; padding:14px 8px; border-right:1px solid var(--line); }
+        .startup-count-item:last-child { border-right:0; }
+        .startup-count-item .num { color:var(--acid); font:400 1.55rem/1 Georgia,"Times New Roman",serif; }
+        .startup-count-item .lbl { margin-top:5px; color:#92988b; font-size:.53rem; letter-spacing:.1em; }
+
+        #customModalOverlay { padding:26px; background:rgba(8,9,8,.90); backdrop-filter:blur(14px); }
+        #customModalBox { width:min(720px,100%); max-width:720px; max-height:calc(100dvh - 52px); padding:30px; overflow:auto; border:1px solid var(--line); border-radius:0; background:#171917; box-shadow:none; }
+        #customModalBox::before { display:none; }
+        .dialog-kicker { margin-bottom:14px; color:var(--acid); font-size:.6rem; letter-spacing:.16em; }
+        #customModalTitle { color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:clamp(1.8rem,4vw,3.3rem); font-weight:400; letter-spacing:-.065em; }
+        #customModalMessage { max-height:54dvh; margin:24px 0; padding:0; color:#b4baae; font-size:.84rem; line-height:1.6; }
+        .picker-option { min-height:88px; margin:0 !important; padding:11px !important; border:1px solid var(--line) !important; border-radius:0 !important; background:#151715 !important; }
+        .picker-option:hover { border-color:var(--acid) !important; background:#1a1d18 !important; transform:none; }
+        .picker-option img { width:47px !important; height:64px !important; border-radius:0 !important; box-shadow:none !important; }
+        .picker-option-manual { color:#d6dbcf; border-style:dashed !important; }
+        #modalOkBtn,#modalCancelBtn { min-width:120px; border-radius:0 !important; }
+        #modalCancelBtn { color:#d3d8cd !important; border-color:var(--line) !important; background:transparent !important; }
+
+        .modal-overlay { padding:24px; background:rgba(7,8,7,.91); backdrop-filter:blur(14px); }
+        .modal-content { width:min(1100px,100%); max-width:1100px; max-height:calc(100dvh - 48px); border:1px solid var(--line); border-radius:0; background:#161816; box-shadow:none; }
+        .modal-content::after { height:310px; background:linear-gradient(180deg,rgba(16,18,16,.05) 10%,#161816 94%); }
+        .modal-header-img { height:310px; opacity:.72; border:0; border-radius:0; filter:grayscale(.2) contrast(1.06) brightness(.76); }
+        .close-btn { z-index:5; top:18px; right:18px; width:42px; height:42px; border:1px solid rgba(244,245,236,.35); border-radius:50%; color:var(--ink); background:#171a17; box-shadow:none; }
+        .close-btn:hover { color:var(--acid); border-color:var(--acid); background:#171a17; }
+        .modal-body { margin-top:-92px; padding:0 34px 36px; }
+        .detail-kicker { margin-bottom:12px; color:var(--acid); font:.62rem/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.15em; }
+        .modal-body h2 { max-width:830px; margin:0 0 24px; color:var(--ink); font-family:Georgia,"Times New Roman",serif; font-size:clamp(2.65rem,6vw,5rem); font-weight:400; letter-spacing:-.075em; line-height:.84; text-shadow:none; }
+        .modal-badges { display:flex; gap:0; margin:0 0 24px; padding:11px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+        .modal-badges .badge { margin:0; padding:0 14px; border:0; border-right:1px solid var(--line); border-radius:0; color:#ced3c8; background:transparent !important; font:.66rem/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; }
+        .modal-badges .badge:first-child { padding-left:0; color:var(--acid); }
+        .modal-badges .badge:last-child { border-right:0; }
+        #m-watch-providers { gap:10px; margin:0 !important; padding:0 0 20px; border-bottom:1px solid var(--line); }
+        .modal-summary { max-width:850px; margin:25px 0 34px; padding:0 0 0 18px; border-left:2px solid var(--acid); color:#d0d5ca; font-size:.94rem; line-height:1.78; }
+        .modal-body h3 { margin:0 0 15px !important; padding:0 0 10px 0 !important; border-left:0 !important; border-bottom:1px solid var(--line); color:var(--ink) !important; font-family:Georgia,"Times New Roman",serif; font-size:1.45rem !important; font-weight:400; }
+        .cast-slider { gap:10px; margin:0 0 32px; padding:0 0 12px; }
+        .cast-card { flex:0 0 88px; padding:0; }
+        .cast-img { width:72px; height:72px; margin-bottom:8px; border:1px solid var(--line); border-radius:0; box-shadow:none; filter:grayscale(.14); }
+        .cast-name { color:#e4e7de; font-size:.68rem; }.cast-role { color:#949a8e; font-size:.58rem; }
+        .modal-actions { grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding:19px 0 0; border-top:1px solid var(--line); }
+        .modal-actions .btn-action { min-height:48px; padding:10px 8px; border:1px solid var(--line); border-radius:0; color:#d9ddd3; background:#1d201d; font-size:.67rem; box-shadow:none; }
+        .modal-actions .btn-action:hover { border-color:var(--line-strong); background:#252a23; transform:none; }
+        .modal-actions .trailer-btn { color:white; border-color:#e44e42; background:#e44e42; }.modal-actions .btn-fav { color:var(--acid); border-color:rgba(228,185,113,.45); background:rgba(228,185,113,.08); }.modal-actions .btn-like { color:var(--acid); border-color:rgba(228,185,113,.45); background:rgba(228,185,113,.08); }.modal-actions .btn-dislike { color:#ff968b; border-color:rgba(255,112,99,.45); background:rgba(255,112,99,.08); }.modal-actions .btn-share { color:#d5dad0; border-color:var(--line); background:#1d201d; }
+        .alt-shows-wrapper { padding-top:24px; border-top:1px solid var(--line); }.alt-card { border:1px solid var(--line); border-radius:0; background:#1a1c1a; }.alt-card-img-wrapper { border-radius:0; }
+
+        @media (max-width:680px) { #startupOverlay::before { top:18px; left:18px; } #startupOverlay::after { right:18px; bottom:18px; } .startup-count-item { padding:11px 4px; } .startup-count-item .num { font-size:1.15rem; }
+            #customModalOverlay,.modal-overlay { align-items:flex-end; padding:0; } #customModalBox,.modal-content { width:100%; max-height:92dvh; border-right:0; border-bottom:0; border-left:0; } #customModalBox { padding:24px 18px; }
+            .modal-header-img,.modal-content::after { height:240px; }.modal-body { margin-top:-63px; padding:0 18px 25px; }.modal-body h2 { font-size:clamp(2.45rem,13vw,3.8rem); }.modal-badges { flex-wrap:wrap; gap:9px 0; }.modal-badges .badge { padding:0 9px; }.modal-badges .badge:first-child { padding-left:0; }.cast-card { flex-basis:74px; }.cast-img { width:61px; height:61px; }.modal-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }.modal-actions .btn-action { min-height:45px; }
+        }
     </style>
 </head>
 <body>
@@ -570,14 +704,24 @@
     </div>
 
     <header class="sera-hero">
-        <div class="sera-brand"><span class="brand-mark">S</span><h1>SÉ<span>RA</span></h1></div>
-        <p class="subtitle">İzleme zevkinden yola çıkan, şeffaf ve kişisel dizi keşfi</p>
-        <div class="hero-signals"><span>✦ Kişisel öneriler</span><span>⌁ Cihazında saklanır</span><span>⌕ Büyük arşiv</span></div>
+        <div class="sera-hero-copy">
+            <div class="sera-brand"><span class="brand-mark">S</span><span class="brand-word">SÉRA</span><span class="brand-index">/ 01</span></div>
+            <p class="hero-kicker">KİŞİSEL SİNEMA DEFTERİ</p>
+            <h1>Hikâyelerin<br><em>izini</em> sür.</h1>
+            <p class="subtitle">Seni içine çeken yapımların ortak tonundan, bu akşama yakışacak yeni bir izleme rotası çıkar.</p>
+            <div class="hero-signals"><span>Yerel listen</span><span>Sessiz keşif</span><span>Geniş arşiv</span></div>
+        </div>
+        <aside class="hero-console" aria-label="SÉRA izleme defteri">
+            <div class="console-top"><span>SÉRA DEFTERİ</span><b><i></i> BU AKŞAM</b></div>
+            <div class="console-main"><span class="console-number">3/4</span><div><strong>Hikâye notları</strong><small>Ton · tür · atmosfer</small></div></div>
+            <div class="console-meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="console-foot"><span>İZLEME İZİ</span><span>KİŞİSEL</span><span>HAZIR</span></div>
+        </aside>
     </header>
     <main class="sera-app">
     <div class="container">
         <div class="nav-tabs" id="navTabs">
-            <button class="nav-tab active" onclick="switchTab('fav', this)">🤖 Dizi Analizi</button>
+            <button class="nav-tab active" onclick="switchTab('fav', this)">◈ Dizi Haritası</button>
             <button class="nav-tab" onclick="switchTab('cat', this)">🎯 Kategoriler</button>
             <button class="nav-tab" onclick="switchTab('search', this)">🔍 Dizi Ara</button>
             <button class="nav-tab" onclick="switchTab('trend', this)">🔥 Trendler</button>
@@ -625,6 +769,11 @@
                     <div><span class="section-eyebrow">KİŞİSEL KEŞİF</span><h2>Sevdiğin dizilerden yeni bir rota çıkar.</h2><p>İki ya da daha fazla yapım ekle; SÉRA tür, konu ve anlatı yakınlığına göre adayları sıralasın.</p></div>
                     <div class="intro-orbit" aria-hidden="true">✦</div>
                 </section>
+                <section class="discovery-journey" aria-label="SÉRA keşif akışı">
+                    <article class="journey-card"><span class="journey-no">01</span><div><small>İZLER</small><h3>Sende kalan hikâyeler.</h3><p>Sevdiğin yapımların ortak tonu, ritmi ve dünyası bir araya gelir.</p></div><b>↘</b></article>
+                    <article class="journey-card"><span class="journey-no">02</span><div><small>BAĞLAR</small><h3>Gizli akrabalıklar.</h3><p>Türün ötesindeki anlatı ve atmosfer bağları iz sürülerek bulunur.</p></div><b>↘</b></article>
+                    <article class="journey-card"><span class="journey-no">03</span><div><small>KEŞİF</small><h3>Bir sonraki dünya.</h3><p>Arşivdeki adaylar, bu akşamın ruh hâline göre sakin bir rotaya dönüşür.</p></div><b>↗</b></article>
+                </section>
                 <div class="discovery-brief" aria-label="Öneri yöntemi">
                     <span>🔒 Tercihler bu cihazda kalır</span>
                     <span>∑ TF-IDF · BM25 · kosinüs benzerliği</span>
@@ -655,7 +804,7 @@
                         <option value="Turkish">Türk Dizileri</option>
                     </select>
                 </div>
-                <button id="analyzeBtnFav" onclick="startAnalysis()">🤖 Dizi Analiz Et ve Öner</button>
+                <button id="analyzeBtnFav" onclick="startAnalysis()">İzleme Rotamı Çıkar</button>
                 <button onclick="suggestRandom()" style="margin-top:10px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);color:#aaa;font-size:14px;" title="Ne izleyeceğine karar veremiyor musun?">🎲 Rastgele Popüler Dizi Öner</button>
             </div>
 
@@ -743,7 +892,7 @@
                     <div id="trendStatus" style="color:#aaa;font-size:13px;margin-bottom:12px;min-height:20px;"></div>
                     <div id="trendGrid" style="display:flex;flex-direction:column;gap:12px;"></div>
                     <div id="trendLoadMore" style="display:none;margin-top:16px;">
-                        <button onclick="loadMoreTrends()" style="width:100%;background:rgba(229,9,20,0.15);border:1px solid rgba(229,9,20,0.4);color:#ff6b6b;padding:12px;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;">+ Daha Fazla Yükle</button>
+                        <button onclick="loadMoreTrends()" style="width:100%;background:rgba(228,185,113,0.15);border:1px solid rgba(228,185,113,0.4);color:#e4b971;padding:12px;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;">+ Daha Fazla Yükle</button>
                     </div>
                 </div>
             </div>
@@ -761,7 +910,7 @@
 
             <div id="view-sets" class="view-section">
                 <h2 style="color: #fff; margin-top: 0; font-size:1.5em;">Veri ve Ayarlar</h2>
-                <div style="background:rgba(229,9,20,0.07);border:1px solid rgba(229,9,20,0.2);border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+                <div style="background:rgba(228,185,113,0.07);border:1px solid rgba(228,185,113,0.2);border-radius:12px;padding:16px 18px;margin-bottom:20px;">
                     <div style="font-size:1.1em;font-weight:900;letter-spacing:4px;color:#fff;margin-bottom:6px;">SÉ<span style="color:var(--primary);">RA</span></div>
                     <div style="font-size:12px;color:#aaa;line-height:1.8;"><strong style="color:#ccc;">S</strong>eries &nbsp;<strong style="color:#ccc;">É</strong>motion &nbsp;<strong style="color:#ccc;">R</strong>ecommendation &nbsp;<strong style="color:#ccc;">A</strong>I<br>Beğenilerinizden yararlanan, cihaz içinde çalışan ve size özel dizi öneren bir keşif motorudur.</div>
                 </div>
@@ -772,7 +921,7 @@
             </div>
 
             <div id="loader" style="display: none; text-align: center; margin-top: 20px;">
-                <div style="font-size: 16px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">Algoritmalar Başlatıldı...</div>
+                <div style="font-size: 16px; color: var(--primary); font-weight: bold; margin-bottom: 10px;">Arşiv taranıyor...</div>
                 <div id="loaderSteps" style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #aaa; text-align: left; display: inline-flex;"></div>
             </div>
         </div>
@@ -782,11 +931,11 @@
     <div id="result" style="display: none; width: 100%; max-width: 1200px;">
         <div class="result-container">
             <div style="display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary); padding-left: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
-                <h2 style="margin: 0; border: none; padding: 0;">Önerilen Diziler</h2>
+                <div><h2 style="margin: 0; border: none; padding: 0;">Önerilen Diziler</h2><div id="neuralEngineStatus" style="margin-top:5px;color:#7f8b9d;font-size:11px;letter-spacing:.02em;" aria-live="polite">NLP katmanı hazırlanıyor</div></div>
                 <div class="sort-container">
                     <button id="layoutToggleBtn" onclick="toggleLayout()" class="btn-action btn-secondary" style="margin:0; padding: 10px 15px;">↕️ Aşağı Kaydırma</button>
                     <select id="resultSort" onchange="sortResults()">
-                        <option value="default">✨ Varsayılan (AI Skoru)</option>
+                        <option value="default">✦ Varsayılan (Keşif Sırası)</option>
                         <option value="date">📅 Çıkış Tarihine (Yeni→Eski)</option>
                         <option value="imdb">⭐ IMDb Puanına Göre</option>
                         <option value="rand">🎲 Rastgele Karıştır</option>
@@ -806,7 +955,7 @@
                 <div class="detail-kicker">SÉRA YAPIM DOSYASI</div>
                 <h2 id="modalTitle">Dizi Adı</h2>
                 <div class="modal-badges" id="modalBadges">
-                    <div class="badge badge-prob" id="m-prob">🤖 Uyum: %0.0</div>
+                    <div class="badge badge-prob" id="m-prob">Uyum: %0.0</div>
                     <div class="badge badge-info" id="m-year">📅 Yıl: -</div>
                     <div class="badge badge-tmdb" id="m-tmdb" style="display:none;">🍅 TMDB: -</div>
                     <div class="badge badge-info" id="m-genres">🎭 Tür: -</div>
@@ -824,7 +973,8 @@
                     <button class="btn-action btn-like" onclick="sendFeedback(true)">👍 Beğendim</button>
                     <button class="btn-action btn-dislike" onclick="sendFeedback(false)">👎 Beğenmedim</button>
                     <button class="btn-action btn-share" onclick="shareSeries()">🔗 Paylaş</button>
-                    <button class="btn-action btn-secondary" onclick="showXAI()">🧠 AI Özeti</button>
+                    <button class="btn-action btn-secondary" id="m-visual-btn" onclick="runDetailVisualAnalysis()">◌ Poster CNN</button>
+                    <button class="btn-action btn-secondary" onclick="showXAI()">◌ Neden Uyar?</button>
                 </div>
 
                 <div id="altShowsWrapper" class="alt-shows-wrapper" style="display: none;">
@@ -857,7 +1007,7 @@
     <div id="galleryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:9999999; justify-content:center; align-items:center; flex-direction:column; backdrop-filter: blur(10px);">
         <button onclick="closeGallery()" style="position:absolute; top:20px; right:30px; background:transparent; color:#fff; font-size:40px; border:none; cursor:pointer; transition: color 0.3s;">&times;</button>
         <div style="display:flex; justify-content:center; align-items:center; width:90%; height:75%;">
-           <img id="galleryMainImage" src="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:12px; box-shadow:0 0 40px rgba(229,9,20,0.3);">
+           <img id="galleryMainImage" src="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:12px; box-shadow:0 0 40px rgba(228,185,113,0.3);">
         </div>
         <div style="display:flex; gap:20px; margin-top:30px; align-items:center;">
             <button onclick="prevGalleryImage()" class="btn-action" style="padding: 10px 20px; font-size: 20px;">&#8592;</button>
@@ -2244,7 +2394,7 @@
                                     border-radius:10px; border:1px solid rgba(255,255,255,0.1);
                                     background:rgba(255,255,255,0.04); cursor:pointer;
                                     transition:border-color 0.2s,background 0.2s;"
-                             onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(229,9,20,0.1)'"
+                             onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(228,185,113,0.1)'"
                              onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='rgba(255,255,255,0.04)'">
                             ${imgUrl ? `<img src="${imgUrl}" style="width:44px;height:60px;border-radius:5px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<div style="width:44px;height:60px;border-radius:5px;background:#222;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">🎬</div>`}
                             <div style="text-align:left;flex:1;min-width:0;">
@@ -2299,11 +2449,11 @@
         function renderTags() {
             const safeTags = userTags.map(t => DOMPurify.sanitize(t || ''));
             document.getElementById('tagList').innerHTML = safeTags.map((t,i) =>
-                `<span style="background:rgba(229,9,20,0.15); border:1px solid var(--primary); padding:6px 14px; border-radius:20px; font-size:13px; display:inline-flex; align-items:center; gap:8px;">${t} <b style="cursor:pointer; color:#fff; font-size:16px; line-height:1;" onclick="removeTag(${i})">&times;</b></span>`
+                `<span style="background:rgba(228,185,113,0.15); border:1px solid var(--primary); padding:6px 14px; border-radius:20px; font-size:13px; display:inline-flex; align-items:center; gap:8px;">${t} <b style="cursor:pointer; color:#fff; font-size:16px; line-height:1;" onclick="removeTag(${i})">&times;</b></span>`
             ).join('');
         }
 
-        const stepLabels = ['Veri kaynakları ve diziler taranıyor...', 'Yapay Zeka zevk profilinizi çıkarıyor...', 'Vektörel uzaklıklar hesaplanıyor...', 'Sonuçlar IMDb puanlarına göre sıralanıyor...'];
+        const stepLabels = ['Veri kaynakları ve diziler taranıyor...', 'Zevk profili çıkarılıyor...', 'Vektörel uzaklıklar hesaplanıyor...', 'Hikâye yakınlığı ölçülüyor...', 'Sonuçlar kalite sinyalleriyle sıralanıyor...'];
         function setLoaderStep(index) {
             let html = '';
             stepLabels.forEach((s, i) => {
@@ -2331,7 +2481,7 @@
             document.getElementById('view-' + tabId).classList.add('active');
 
             const viewLabels = {
-                fav: 'Dizi Analizi', cat: 'Kategori Keşfi', search: 'Dizi Ara',
+                fav: 'Dizi Haritası', cat: 'Kategori Keşfi', search: 'Dizi Ara',
                 trend: 'Trendler', favs: 'Kütüphanem', sets: 'Veri ve Ayarlar'
             };
             const indicator = document.getElementById('activeViewIndicator');
@@ -2658,8 +2808,10 @@
                 let foundNames = [];
                 let combinedSummary = "";
                 let semanticText = "";
+                let nlpQueryText = "";
                 let seriesList = [];
                 let individualProfiles = [];
+                let neuralSeedShows = [];
                 let inputGenres = new Set();
                 let inputTypes = new Set();
                 let targetedResults = [];
@@ -2730,6 +2882,7 @@
 
                         if(match) {
                             foundNames.push(match.name);
+                            neuralSeedShows.push(match);
                             inputLower.push(match.name.toLowerCase());
                             if(match.summary) {
                                 combinedSummary += " " + match.summary.replace(/<[^>]+>/g, '');
@@ -2913,6 +3066,7 @@
                 }
                 searchResults = uniqueShows;
 
+                nlpQueryText = method === 'fav' ? combinedSummary : semanticText;
                 setLoaderStep(2);
                 let scoredMatches = [];
                 let allProcessed = [];
@@ -3120,6 +3274,12 @@
                 allProcessed.sort((a, b) => b.score - a.score);
                 scoredMatches = allProcessed;
 
+                // İlk aramada da çalışan, yerelde eğitilmiş hafif NLP katmanı.
+                // Ağ hatası veya TensorFlow yüklenememesi temel matematiksel sıralamayı etkilemez.
+                setLoaderStep(3);
+                await applyNeuralReRanking(scoredMatches, nlpQueryText);
+                setLoaderStep(4);
+
                 if (scoredMatches.length === 0) {
                     let bestFallbacks = allProcessed.slice(0, 30);
                     if (bestFallbacks.length > 0 && bestFallbacks[0].score > 0.01) {
@@ -3137,6 +3297,10 @@
                 window.currentShowData = null;
 
                 await renderNetflixCarousel();
+
+                // CNN poster katmanı ilk liste çizildikten sonra çalışır; açılışı bekletmez.
+                const visualSeeds = neuralSeedShows.length ? neuralSeedShows : globalScoredMatches.slice(0, 3).map(match => match.show);
+                if (visualSeeds.length) window.setTimeout(() => runVisualFirstPass(visualSeeds, globalScoredMatches), 80);
 
             } catch (err) {
                 showCustomModal("Uyarı", err.message);
@@ -3269,7 +3433,7 @@
             slider.addEventListener('mousemove', (e) => { if(!isDown) return; e.preventDefault(); const x = e.pageX - slider.offsetLeft; const walk = (x - startX) * 2; slider.scrollLeft = scrollLeft - walk; });
         }
 
-        function renderNetflixCarousel() {
+        function renderNetflixCarousel({ preserveScroll = false } = {}) {
             initCardObserver();
             initScrollObserver();
             const slider = document.getElementById('resultGrid');
@@ -3280,7 +3444,7 @@
             enableDragToScroll(slider);
             loadMoreHorizontal();
 
-            document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (!preserveScroll) document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function loadMoreHorizontal() {
@@ -3388,9 +3552,9 @@
                 probEl.style.display = 'none';
             } else {
                 probEl.style.display = 'inline-block';
-                let probColor = m.prob >= 85.0 ? '#00ff88' : (m.prob >= 70.0 ? '#ffcc00' : '#ff4d4d');
-                let probBg = m.prob >= 85.0 ? 'rgba(0, 255, 136, 0.2)' : (m.prob >= 70.0 ? 'rgba(255, 204, 0, 0.2)' : 'rgba(229, 9, 20, 0.2)');
-                probEl.innerText = `🤖 Uyum: %${m.prob.toFixed(1)}`;
+                let probColor = m.prob >= 85.0 ? '#00ff88' : (m.prob >= 70.0 ? '#ffcc00' : '#e4b971');
+                let probBg = m.prob >= 85.0 ? 'rgba(0, 255, 136, 0.2)' : (m.prob >= 70.0 ? 'rgba(255, 204, 0, 0.2)' : 'rgba(228, 185, 113, 0.2)');
+                probEl.innerText = `Uyum: %${m.prob.toFixed(1)}`;
                 probEl.style.color = probColor; probEl.style.borderColor = probColor; probEl.style.backgroundColor = probBg;
             }
 
@@ -3793,12 +3957,12 @@
 
             let matchPct = Math.min(99.8, (window.currentXAI.score / 1.5) * 100).toFixed(1);
             let keywordsHtml = sortedCommon.length > 0
-                ? sortedCommon.map(w => `<span style="background:rgba(229,9,20,0.15);border:1px solid var(--primary);padding:4px 10px;border-radius:20px;font-size:13px;color:#fff;">${w}</span>`).join(' ')
+                ? sortedCommon.map(w => `<span style="background:rgba(228,185,113,0.15);border:1px solid var(--primary);padding:4px 10px;border-radius:20px;font-size:13px;color:#fff;">${w}</span>`).join(' ')
                 : '<span style="color:#aaa;font-size:13px;">Genel atmosfer ve ton uyumu</span>';
 
             let htmlContent = `
                 <div style="text-align:left;">
-                    <div style="display:flex;align-items:center;gap:15px;margin-bottom:20px;padding:15px;background:rgba(229,9,20,0.08);border-radius:12px;border:1px solid rgba(229,9,20,0.2);">
+                    <div style="display:flex;align-items:center;gap:15px;margin-bottom:20px;padding:15px;background:rgba(228,185,113,0.08);border-radius:12px;border:1px solid rgba(228,185,113,0.2);">
                         <div style="font-size:2.5em;">🤖</div>
                         <div>
                             <div style="color:#aaa;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Zevk Uyumu</div>
@@ -4263,15 +4427,15 @@
   <rect x="30" y="72" width="150" height="96" rx="8" fill="#151515"/>
   <circle cx="72" cy="120" r="22" fill="#0d0d0d" stroke="#444" stroke-width="2"/>
   <circle cx="72" cy="120" r="12" fill="#1a1a1a" stroke="#333" stroke-width="1.5"/>
-  <circle cx="72" cy="120" r="4" fill="#e50914"/>
+  <circle cx="72" cy="120" r="4" fill="#e4b971"/>
   <circle cx="138" cy="120" r="22" fill="#0d0d0d" stroke="#444" stroke-width="2"/>
   <circle cx="138" cy="120" r="12" fill="#1a1a1a" stroke="#333" stroke-width="1.5"/>
-  <circle cx="138" cy="120" r="4" fill="#e50914"/>
+  <circle cx="138" cy="120" r="4" fill="#e4b971"/>
   <path d="M72 120 Q105 100 138 120" stroke="#555" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/>
   <rect x="85" y="152" width="40" height="10" rx="3" fill="#222" stroke="#333" stroke-width="1"/>
   <rect x="40" y="67" width="12" height="8" rx="2" fill="#222"/>
   <rect x="158" y="67" width="12" height="8" rx="2" fill="#222"/>
-  <text x="105" y="32" font-family="Arial,sans-serif" font-size="11" fill="#e50914" text-anchor="middle" font-weight="bold" letter-spacing="2">SÉRA</text>
+  <text x="105" y="32" font-family="Arial,sans-serif" font-size="11" fill="#e4b971" text-anchor="middle" font-weight="bold" letter-spacing="2">SÉRA</text>
   <text x="105" y="48" font-family="Arial,sans-serif" font-size="9" fill="#555" text-anchor="middle">Resim bulunamadı</text>
   <text x="105" y="215" font-family="Arial,sans-serif" font-size="12" fill="#ccc" text-anchor="middle" font-weight="bold">${name.length > 22 ? name.substring(0,22)+'...' : name}</text>
   <line x1="30" y1="228" x2="180" y2="228" stroke="#333" stroke-width="0.5"/>
@@ -4596,6 +4760,302 @@
             return scores;
         }
 
+        // ── Gerçek yerel sinir ağı katmanı ─────────────────────────────────────
+        // Ağ, açıklama metnini sabit boyutlu hash-token vektörüne çevirir. Arşivdeki
+        // tür profilini hedef kabul ederek ilk aramada kısa süreyle eğitilir; hiçbir
+        // tercih veya içerik bu cihazın dışına gönderilmez.
+        const SERA_NLP_INPUT_DIM = 128;
+        let seraNlpModel = null;
+        let seraNlpEmbeddingModel = null;
+        let seraNlpSignature = '';
+        let seraFeedbackModel = null;
+        let seraFeedbackSignature = '';
+        let seraVisualModel = null;
+        let seraVisualLoadPromise = null;
+        let seraVisualPassRunning = false;
+        const seraPosterEmbeddingCache = new Map();
+
+        function setNeuralStatus(message) {
+            const el = document.getElementById('neuralEngineStatus');
+            if (el) el.textContent = message;
+        }
+
+        function hasTensorFlow() {
+            return Boolean(window.tf && window.tf.layers && window.tf.tensor2d);
+        }
+
+        function stableTokenHash(token) {
+            let hash = 2166136261;
+            for (let i = 0; i < token.length; i++) {
+                hash ^= token.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+            return hash >>> 0;
+        }
+
+        function textToNlpVector(text) {
+            const vector = new Array(SERA_NLP_INPUT_DIM).fill(0);
+            const tokens = getTokens(text).slice(0, 550);
+            for (const token of tokens) {
+                const hash = stableTokenHash(token);
+                const index = hash % SERA_NLP_INPUT_DIM;
+                vector[index] += ((hash >>> 8) & 1) ? 1 : -1;
+            }
+            const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
+            return norm ? vector.map(value => value / norm) : vector;
+        }
+
+        function cosineArray(a, b) {
+            let dot = 0, aNorm = 0, bNorm = 0;
+            for (let i = 0; i < Math.min(a.length, b.length); i++) {
+                dot += a[i] * b[i]; aNorm += a[i] * a[i]; bNorm += b[i] * b[i];
+            }
+            return aNorm && bNorm ? dot / Math.sqrt(aNorm * bNorm) : 0;
+        }
+
+        async function ensureLocalNlpModel(matches) {
+            if (!hasTensorFlow()) return null;
+            const training = matches.filter(m => m.profile && m.profile.some(v => v > 0.001)).slice(0, 180);
+            if (training.length < 24) return null;
+            const signature = training.slice(0, 80).map(m => `${m.show.id || m.show.name}:${m.profile.map(v => v.toFixed(2)).join('')}`).join('|');
+            if (seraNlpModel && seraNlpSignature === signature) return { model: seraNlpModel, embedder: seraNlpEmbeddingModel };
+
+            if (seraNlpModel) { seraNlpModel.dispose(); seraNlpEmbeddingModel?.dispose(); }
+            const xs = tf.tensor2d(training.map(m => textToNlpVector(m.sText)), [training.length, SERA_NLP_INPUT_DIM]);
+            const ys = tf.tensor2d(training.map(m => m.profile), [training.length, categoryKeywords.length]);
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ inputShape: [SERA_NLP_INPUT_DIM], units: 32, activation: 'relu', kernelInitializer: tf.initializers.glorotUniform({ seed: 731 }) }));
+            model.add(tf.layers.dense({ units: categoryKeywords.length, activation: 'sigmoid', kernelInitializer: tf.initializers.glorotUniform({ seed: 911 }) }));
+            model.compile({ optimizer: tf.train.adam(0.012), loss: 'meanSquaredError' });
+            try {
+                await model.fit(xs, ys, { epochs: 14, batchSize: Math.min(24, training.length), shuffle: true, verbose: 0 });
+                seraNlpModel = model;
+                seraNlpEmbeddingModel = tf.model({ inputs: model.inputs, outputs: model.layers[0].output });
+                seraNlpSignature = signature;
+                return { model: seraNlpModel, embedder: seraNlpEmbeddingModel };
+            } catch (error) {
+                console.warn('Yerel NLP eğitimi tamamlanamadı:', error);
+                model.dispose();
+                return null;
+            } finally {
+                xs.dispose(); ys.dispose();
+            }
+        }
+
+        function getFeedbackTrainingSamples() {
+            const likes = (userFeedback?.likes || []).filter(item => Array.isArray(item.profile));
+            const dislikes = (userFeedback?.dislikes || []).filter(item => Array.isArray(item.profile));
+            if (likes.length < 2 || dislikes.length < 2 || likes.length + dislikes.length < 6) return [];
+            return [
+                ...likes.map(item => ({ x: item.profile, y: 1, id: item.id })),
+                ...dislikes.map(item => ({ x: item.profile, y: 0, id: item.id }))
+            ];
+        }
+
+        async function ensureFeedbackRanker() {
+            if (!hasTensorFlow()) return null;
+            const samples = getFeedbackTrainingSamples();
+            if (!samples.length) return null;
+            const signature = samples.map(s => `${s.id}:${s.y}`).sort().join('|');
+            if (seraFeedbackModel && seraFeedbackSignature === signature) return seraFeedbackModel;
+            if (seraFeedbackModel) seraFeedbackModel.dispose();
+            const xs = tf.tensor2d(samples.map(s => s.x), [samples.length, categoryKeywords.length]);
+            const ys = tf.tensor2d(samples.map(s => [s.y]), [samples.length, 1]);
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ inputShape: [categoryKeywords.length], units: 12, activation: 'relu', kernelInitializer: tf.initializers.glorotUniform({ seed: 1201 }) }));
+            model.add(tf.layers.dense({ units: 1, activation: 'sigmoid', kernelInitializer: tf.initializers.glorotUniform({ seed: 1207 }) }));
+            model.compile({ optimizer: tf.train.adam(0.018), loss: 'binaryCrossentropy' });
+            try {
+                await model.fit(xs, ys, { epochs: 42, batchSize: Math.min(8, samples.length), shuffle: true, verbose: 0 });
+                seraFeedbackModel = model; seraFeedbackSignature = signature;
+                return model;
+            } catch (error) {
+                console.warn('Geri bildirim MLP eğitimi tamamlanamadı:', error);
+                model.dispose(); return null;
+            } finally { xs.dispose(); ys.dispose(); }
+        }
+
+        async function applyNeuralReRanking(matches, userText) {
+            if (!matches.length) return;
+            if (!hasTensorFlow()) { setNeuralStatus('Keşif sırası hazır · ek hikâye katmanı yüklenemedi'); return; }
+            try {
+                setNeuralStatus('Hikâye katmanı hazırlanıyor…');
+                const nlp = await ensureLocalNlpModel(matches);
+                if (nlp) {
+                    const limit = Math.min(matches.length, 800);
+                    const input = tf.tensor2d([textToNlpVector(userText)], [1, SERA_NLP_INPUT_DIM]);
+                    const candidateInput = tf.tensor2d(matches.slice(0, limit).map(m => textToNlpVector(m.sText)), [limit, SERA_NLP_INPUT_DIM]);
+                    const queryEmbedding = await nlp.embedder.predict(input).array();
+                    const candidateEmbeddings = await nlp.embedder.predict(candidateInput).array();
+                    input.dispose(); candidateInput.dispose();
+                    matches.slice(0, limit).forEach((match, index) => {
+                        const similarity = Math.max(0, cosineArray(queryEmbedding[0], candidateEmbeddings[index]));
+                        match.neuralNlp = similarity;
+                        // Nöral skor ikinci bir oy olarak kalır; tek başına matematiksel eşleşmeyi ezmez.
+                        match.score += (similarity - 0.45) * 0.13;
+                    });
+                }
+
+                const feedbackRanker = await ensureFeedbackRanker();
+                if (feedbackRanker) {
+                    const limit = Math.min(matches.length, 800);
+                    const profiles = tf.tensor2d(matches.slice(0, limit).map(m => m.profile), [limit, categoryKeywords.length]);
+                    const probabilities = await feedbackRanker.predict(profiles).array();
+                    profiles.dispose();
+                    matches.slice(0, limit).forEach((match, index) => {
+                        const probability = probabilities[index][0];
+                        match.neuralFeedback = probability;
+                        match.score += (probability - 0.5) * 0.16;
+                    });
+                    setNeuralStatus('Kişisel izler ve hikâye yakınlığıyla sıralandı');
+                } else {
+                    setNeuralStatus(nlp ? 'Hikâye yakınlığı ilk aramada etkin' : 'Matematiksel sıralama hazır');
+                }
+                matches.sort((a, b) => b.score - a.score);
+            } catch (error) {
+                console.warn('Nöral yeniden sıralama atlandı:', error);
+                setNeuralStatus('Keşif sırası hazır · ek katman atlandı');
+            }
+        }
+
+        function posterURL(show) {
+            const image = show?.image;
+            const raw = image?.original || image?.medium || (typeof image === 'string' ? image : '');
+            return raw ? raw.replace(/^http:\/\//i, 'https://') : '';
+        }
+
+        function loadScriptOnce(src, globalName) {
+            if (window[globalName]) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[data-sera-src="${src}"]`);
+                if (existing) { existing.addEventListener('load', resolve, { once: true }); existing.addEventListener('error', reject, { once: true }); return; }
+                const script = document.createElement('script'); script.src = src; script.async = true; script.dataset.seraSrc = src;
+                script.onload = resolve; script.onerror = () => reject(new Error('CNN kütüphanesi yüklenemedi'));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensureVisualCNN() {
+            if (seraVisualModel) return seraVisualModel;
+            if (seraVisualLoadPromise) return seraVisualLoadPromise;
+            seraVisualLoadPromise = (async () => {
+                if (!hasTensorFlow()) throw new Error('TensorFlow yüklenemedi');
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js', 'mobilenet');
+                if (!window.mobilenet) throw new Error('MobileNet hazır değil');
+                // alpha .35 küçük, ön-eğitimli bir CNN’dir. Sadece görsel katman istendiğinde indirilir.
+                seraVisualModel = await window.mobilenet.load({ version: 2, alpha: 0.35 });
+                return seraVisualModel;
+            })();
+            try { return await seraVisualLoadPromise; } finally { seraVisualLoadPromise = null; }
+        }
+
+        function loadPosterImage(url) {
+            return new Promise((resolve, reject) => {
+                const image = new Image(); image.crossOrigin = 'anonymous'; image.referrerPolicy = 'no-referrer';
+                image.onload = () => resolve(image); image.onerror = () => reject(new Error('Poster CORS veya ağ hatası verdi'));
+                image.src = url;
+            });
+        }
+
+        async function getCnnSafePoster(show) {
+            const direct = posterURL(show);
+            if (direct && /image\.tmdb\.org/i.test(direct)) return direct;
+            if (!show?.name || !TMDB_API_KEY) return direct;
+            try {
+                const response = await fetch(`${TMDB_BASE}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(show.name)}&language=en-US&page=1`);
+                if (!response.ok) return direct;
+                const data = await response.json();
+                const hit = (data.results || []).find(item => item.poster_path && (item.media_type === 'tv' || item.media_type === 'movie'));
+                return hit?.poster_path ? `https://image.tmdb.org/t/p/w500${hit.poster_path}` : direct;
+            } catch (error) {
+                return direct;
+            }
+        }
+
+        async function posterEmbedding(show, model) {
+            const preferredURL = await getCnnSafePoster(show);
+            if (!preferredURL) return null;
+            const urls = [preferredURL];
+            const originalURL = posterURL(show);
+            if (originalURL && originalURL !== preferredURL) urls.push(originalURL);
+            for (const url of urls) {
+                try {
+                    if (seraPosterEmbeddingCache.has(url)) return seraPosterEmbeddingCache.get(url);
+                    const image = await loadPosterImage(url);
+                    const tensor = model.infer(image, true);
+                    const values = Array.from(await tensor.data());
+                    tensor.dispose();
+                    seraPosterEmbeddingCache.set(url, values);
+                    if (seraPosterEmbeddingCache.size > 48) seraPosterEmbeddingCache.delete(seraPosterEmbeddingCache.keys().next().value);
+                    return values;
+                } catch (error) {
+                    console.info('CNN poster denemesi atlandı:', error.message);
+                }
+            }
+            return null;
+        }
+
+        async function runVisualFirstPass(seedShows, matches) {
+            if (seraVisualPassRunning || !seedShows?.length || !matches?.length) return;
+            seraVisualPassRunning = true;
+            try {
+                setNeuralStatus('Poster CNN’i ilk adaylarda görsel yakınlığı ölçüyor…');
+                const model = await ensureVisualCNN();
+                const seedVectors = (await Promise.all(seedShows.slice(0, 3).map(show => posterEmbedding(show, model).catch(() => null)))).filter(Boolean);
+                if (!seedVectors.length) throw new Error('Seçilen yapımların posteri okunamadı');
+                const centroid = seedVectors[0].map((_, i) => seedVectors.reduce((sum, vector) => sum + vector[i], 0) / seedVectors.length);
+                const candidates = matches.slice(0, 18);
+                let measured = 0;
+                for (const match of candidates) {
+                    const vector = await posterEmbedding(match.show, model).catch(() => null);
+                    if (!vector) continue;
+                    const similarity = Math.max(0, cosineArray(centroid, vector));
+                    match.visualSimilarity = similarity;
+                    match.score += (similarity - 0.45) * 0.07;
+                    measured++;
+                }
+                if (measured) {
+                    matches.sort((a, b) => b.score - a.score);
+                    setNeuralStatus(`Hikâye ve poster katmanı etkin · ${measured} poster görsel yakınlıkla karşılaştırıldı`);
+                    renderNetflixCarousel({ preserveScroll: true });
+                } else setNeuralStatus('Hikâye katmanı etkin · posterler görsel analize izin vermedi');
+            } catch (error) {
+                console.info('Poster CNN katmanı atlandı:', error.message);
+                setNeuralStatus('Hikâye katmanı etkin · poster katmanı bu ağda kullanılamadı');
+            } finally { seraVisualPassRunning = false; }
+        }
+
+        async function getTrailerThumbnail(show) {
+            const id = String(show?.id || '').replace(/^csv_/, '');
+            if (!/^\d+$/.test(id) || !TMDB_API_KEY) return null;
+            for (const kind of ['tv', 'movie']) {
+                try {
+                    const response = await fetch(`${TMDB_BASE}/${kind}/${id}/videos?api_key=${TMDB_API_KEY}&language=en-US`);
+                    if (!response.ok) continue;
+                    const data = await response.json();
+                    const video = (data.results || []).find(item => item.site === 'YouTube' && (item.type === 'Trailer' || item.type === 'Teaser'));
+                    if (video?.key) return `https://i.ytimg.com/vi/${video.key}/hqdefault.jpg`;
+                } catch (error) { console.info('Fragman karesi alınamadı:', error.message); }
+            }
+            return null;
+        }
+
+        async function runDetailVisualAnalysis() {
+            if (!window.currentShowData || !globalScoredMatches.length) return;
+            const btn = document.getElementById('m-visual-btn');
+            if (btn) { btn.disabled = true; btn.textContent = '◌ CNN çalışıyor…'; }
+            try {
+                // Poster zorunlu, fragman karesi ise bulunabildiği her içerikte ikinci görsel sinyal olur.
+                const trailerThumbnail = await getTrailerThumbnail(window.currentShowData);
+                const seeds = [window.currentShowData];
+                if (trailerThumbnail) seeds.push({ image: { original: trailerThumbnail, medium: trailerThumbnail } });
+                await runVisualFirstPass(seeds, globalScoredMatches);
+                if (btn) btn.textContent = trailerThumbnail ? '◌ Poster + fragman CNN yenilendi' : '◌ Poster CNN yenilendi';
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         // Deterministic content-based score. This is deliberately not called a
         // neural network: every component is a measurable similarity metric.
         function ensembleMachineLearning(uProf, sProf, sText, uText) {
@@ -4868,8 +5328,8 @@
                         <div style="font-size:9px;color:#aaa;">${[year,rating].filter(Boolean).join(' · ')}</div>
                     </div>
                     <button onclick="event.stopPropagation();removeFavorite('${f.id}')" title="Kaldır"
-                        style="position:absolute;top:5px;right:5px;background:rgba(229,9,20,0.85);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:14px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;"
-                        onmouseenter="this.style.background='var(--primary)'" onmouseleave="this.style.background='rgba(229,9,20,0.85)'">×</button>
+                        style="position:absolute;top:5px;right:5px;background:rgba(228,185,113,0.85);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:14px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;"
+                        onmouseenter="this.style.background='var(--primary)'" onmouseleave="this.style.background='rgba(228,185,113,0.85)'">×</button>
                 `;
                 grid.appendChild(card);
             });

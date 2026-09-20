@@ -483,6 +483,15 @@
         .n-card:hover { transform:translateY(-6px) scale(1.025); border-color:rgba(255,92,86,.55); }
         @media (max-width:700px) { body { padding:18px 12px 42px; } .sera-hero { padding:8px 4px 12px; } .brand-mark { width:36px; height:36px; border-radius:12px; font-size:1.2rem; } p.subtitle,.hero-signals { margin-left:0; } .hero-signals { margin-top:13px; gap:6px; } .hero-signals span { padding:6px 8px; font-size:.61rem; } .container { border-radius:18px; } .nav-tabs { padding:8px; border-radius:18px 18px 0 0; } .nav-tab { flex-basis:142px !important; padding:11px 12px; font-size:.71rem; } .container-body { padding:24px 17px; } .discovery-intro { align-items:flex-start; } .intro-orbit { width:56px; height:56px; } .discovery-intro p { font-size:.77rem; } .discovery-brief { grid-template-columns:1fr; } .discovery-brief span { min-height:auto; } .add-row { gap:8px !important; } .add-row button { flex-basis:48px !important; width:48px !important; font-size:25px !important; } }
         @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+
+        .nav-tab.active { border-color:rgba(255,255,255,.26); color:#fff; background:linear-gradient(135deg,#e50914,#ff5848); box-shadow:0 9px 25px rgba(229,9,20,.38),inset 0 1px 0 rgba(255,255,255,.22); }
+        .active-view-indicator { display:flex; align-items:baseline; gap:9px; margin:0 0 25px; padding-bottom:13px; border-bottom:1px solid rgba(255,255,255,.09); }
+        .active-view-indicator span { color:#ff7669; font-size:.59rem; font-weight:900; letter-spacing:.16em; }
+        .active-view-indicator strong { color:#f8fafc; font-size:.95rem; letter-spacing:-.01em; }
+        .active-view-indicator.is-changing { animation:viewIndicatorIn .32s cubic-bezier(.16,1,.3,1); }
+        .view-section.active { animation:viewSectionIn .34s cubic-bezier(.16,1,.3,1); }
+        @keyframes viewIndicatorIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes viewSectionIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body>
@@ -568,6 +577,9 @@
         </script>
 
         <div class="container-body">
+            <div class="active-view-indicator" id="activeViewIndicator" aria-live="polite">
+                <span>ŞİMDİ KEŞFEDİYORSUN</span><strong>Dizi Analizi</strong>
+            </div>
 
             <div id="view-fav" class="view-section active">
                 <section class="discovery-intro">
@@ -2274,6 +2286,18 @@
             }
 
             document.getElementById('view-' + tabId).classList.add('active');
+
+            const viewLabels = {
+                fav: 'Dizi Analizi', cat: 'Kategori Keşfi', search: 'Dizi Ara',
+                trend: 'Trendler', favs: 'Kütüphanem', sets: 'Veri ve Ayarlar'
+            };
+            const indicator = document.getElementById('activeViewIndicator');
+            if (indicator) {
+                indicator.classList.remove('is-changing');
+                void indicator.offsetWidth;
+                indicator.querySelector('strong').textContent = viewLabels[tabId] || 'Keşfet';
+                indicator.classList.add('is-changing');
+            }
 
             if (tabId === 'fav' || tabId === 'cat') currentMethod = tabId;
             if (tabId === 'favs') renderFavorites();

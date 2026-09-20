@@ -1,0 +1,4 @@
+import type { MoodTag } from '../../types';
+import { Brain, CloudRain, Coffee, Gauge, Hourglass, ScanSearch } from 'lucide-react';
+const icon={ 'Zihin Yakan':Brain,'Karanlık/Gerilim':CloudRain,'Distopya':ScanSearch,'Siberpunk/Teknoloji':ScanSearch,'Yüksek Adrenalin':Gauge,'Konfor/Rahatlatıcı':Coffee,'Melankolik':Hourglass,'Politik/Güç':Brain } as const;
+export function MoodChips({active,onPick}:{active:MoodTag|'Tümü';onPick:(m:MoodTag)=>void}){const items:['Zihin Yakan','Karanlık/Gerilim','Distopya','Konfor/Rahatlatıcı','Yüksek Adrenalin']=['Zihin Yakan','Karanlık/Gerilim','Distopya','Konfor/Rahatlatıcı','Yüksek Adrenalin'];return <div className="flex flex-wrap gap-2">{items.map(m=>{const Icon=icon[m];return <button key={m} onClick={()=>onPick(m)} className={`mood-chip ${active===m?'mood-chip-active':''}`}><Icon size={14}/>{m}</button>})}</div>}

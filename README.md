@@ -1,54 +1,90 @@
-# SÉRA — Yerel Dizi Keşfi ve Hibrit Öneri Motoru
+# SÉRA — yerel dizi keşif motoru
 
-SÉRA, bir kullanıcının seçtiği yapımlardan veya yazdığı temadan dizi önerileri çıkaran statik bir web uygulamasıdır. Kullanıcı hesabı, merkezi profil sunucusu ve takip kodu kullanmaz: tercihler, geri bildirimler ve model verisi yalnızca kullanılan tarayıcıda kalır.
+SÉRA, dev bir dizi arşivini tek tek katalog gezdirmeden kişisel bir izleme rotasına dönüştüren, tarayıcıda çalışan bir keşif uygulamasıdır. Arayüz; yapay zekâ panosu taklidi yerine, sinematik bir **yapım dosyası** ve editoryal keşif deneyimi için tasarlanmıştır.
 
-## Öneri hattı
+Uygulama kullanıcı hesabı gerektirmez. İzleme listesi, izleme durumu ve ilk rota tercihleri yalnızca cihazdaki `localStorage` alanında kalır.
 
-Bir arama beş aşamada ilerler. İlk üç aşama sonuçların temelini oluşturur; nöral ve görsel katmanlar bunları küçük bir payla yeniden sıralar. Böylece ağdaki bir görsel model sorunu sonuç ekranını boş bırakmaz.
+## Canlı arşiv ve mevcut veri yapısı
 
-1. **Metin ve tür profili:** Seçilen yapımların özetleri ve türleri, uygulamanın kategori sözlüğüyle sayısal bir profile dönüştürülür.
-2. **Bilgi-getirim skoru:** BM25, başlık/özet içindeki ayırt edici kelimeleri ölçer. Kosinüs benzerliği, Jaccard ve Sørensen–Dice ise kategori ve kelime kümelerinin yakınlığını hesaplar.
-3. **Kalite sinyalleri:** Puan, oy sayısı, tür filtresi ve veri kaynağı normalleştirilir. Bunlar yalnızca eşit derecede ilgili adaylar arasında etkili olur.
-4. **Yerel NLP sinir ağı:** İlk aramada tarayıcı, arşivden en fazla 180 adaylık küçük bir örnek alır. Metinler 128 boyutlu hash-token vektörüne çevrilir; TensorFlow.js ile iki katmanlı gerçek bir yoğun ağ eğitilir. Hedef, arşivdeki tür/kategori profilidir. Ağın ara katmanındaki embedding, sorgu ve aday arasındaki ek anlamsal yakınlığı verir. Bu katman dışarıya veri göndermez.
-5. **Geri bildirim MLP:** En az altı geri bildirim ve her iki sınıfta en az iki örnek olduğunda, beğeni/beğenmeme profilleriyle ikinci bir ikili MLP eğitilir. Bu model yalnızca küçük bir yeniden sıralama etkisi uygular; az veriyle rastgele davranmaması için önce devre dışıdır.
+SÉRA, örnek kartlarla sınırlı değildir. İlk açılışta bir Web Worker aşağıdaki mevcut arşivleri sırayla okur; ana iş parçacığı boşta kalır ve sonuçlar kaynaklar geldikçe güncellenir.
 
-## Gerçek görsel CNN
+| Kaynak | Kullanımı |
+| --- | --- |
+| `/api/tmdb` | Vercel sunucu işlevi üzerinden yalnızca istenen TMDB sonuç sayfası |
 
-Öneri listesi ekrana geldikten sonra SÉRA otomatik olarak ön-eğitimli **MobileNet v2 (alpha .35)** modelini yükler. Bu, posterleri vektöre çeviren gerçek bir evrişimli sinir ağıdır.
+SÉRA, arşivin tamamını tarayıcıya indirmez. Kullanıcının sorgusu, ruh hali ve sıralama tercihi için yalnızca gerekli TMDB sonuç sayfasını sunucu proxy üzerinden alır; sonuçlar istemcide kısa süreli önbellekte tutulur. Poster, arka plan, tür ve özet yalnızca dönen kayıttan üretilir.
 
-- Favori tabanlı aramada, seçtiğiniz en fazla üç yapımın posterlerinden bir görsel merkez vektörü çıkarılır ve ilk 18 adayla karşılaştırılır.
-- Kategori aramasında, ilk matematiksel adaylar görsel stil merkezi olarak kullanılır; poster yakınlığı sonuçların küçük bir bölümünü yeniden sıralar.
-- Detay kartındaki **Poster CNN** düğmesi aynı analizi tekrarlar. TMDB’de YouTube fragman anahtarı bulunursa, fragmanın açık thumbnail karesi de ikinci bir görsel sinyal olarak kullanılır.
-- YouTube iframe’i veya başka sitelerin kapalı oynatıcısından video karesi okunamaz. Bu, sitenin değil tarayıcının çapraz kaynak güvenlik kuralıdır. SÉRA doğrudan erişilebilir fragman thumbnail’i varsa onu analiz eder; erişilemeyen medya analizi atlanır.
+## Keşif mantığı
 
-CNN, ağır binlerce poster taraması yerine liste çizildikten sonra küçük bir öncelikli kümede çalışır. Bu karar mobilde ilk etkileşimi korur. Detayda açılan yapım ayrıca istenildiğinde tekrar ölçülebilir.
+Öneri motoru açıklanabilir, istemci taraflı bir sıralama uygular:
 
-## Performans yaklaşımı
+1. Arama cümlesi başlık, özgün ad, özet, tür ve duygu etiketlerine ayrıştırılır.
+2. Türkçe niyet sözcükleri (`gizemli`, `hızlı`, `distopya`, `hacker`, `rahat` vb.) ruh hali kümeleriyle eşleştirilir.
+3. Tür, tempo, anlatı karmaşıklığı, platform, TMDB puanı ve oy yoğunluğu filtreleri uygulanır.
+4. İlk kurulumdaki rota; seçilen mod, tempo, anlatı yoğunluğu ve platform ile puanı kişiselleştirir.
+5. **Sana göre**, **Popüler**, **En yüksek puan** ve **Yeni eklenen** görünümleri aynı arşiv üzerinde farklı sıralama sinyalleri kullanır.
 
-- İlk ekranda çekirdek CSV arşivi yüklenir; büyük anime, Türk dizi ve K-drama arşivleri boş zamanda sırayla hazırlanır.
-- Hesaplama döngüleri periyodik olarak ana iş parçacığına geri döner; uzun taramalar dokunma ve kaydırmayı kilitlemez.
-- Yerel arşiv taranırken ara budama yapılır, yüzlerce yerine en güçlü adaylar bellekte tutulur.
-- Ağır veri setleri `localStorage` içine JSON olarak kopyalanmaz. Tarayıcının HTTP önbelleği CSV’leri önbellekler; yalnızca kullanıcının listesi ve geri bildirimleri cihazda saklanır.
-- Görsel CNN ilk sonuçlar çizildikten sonra çalışır; yüklenemediğinde BM25/kosinüs tabanlı sonuçlar kullanılmaya devam eder.
+Metin araması Web Worker içindeki BM25, TF-IDF, tür kesişimi, Bayes puanı ve rota sinyalleriyle anında çalışır. Poster dosyasında ise ön-eğitimli **MobileNet V2** CNN yalnız kullanıcı analiz açtığında TensorFlow.js ile tarayıcıda yüklenir; sınıflandırma, özellik vektörü, renk paleti ve kontrast cihazda çıkarılır ve yerelde saklanır. Bu CNN sonucu görsel bağlam sağlar; öneri sırasını tek başına belirlemez.
 
-## Veri kaynakları
+## GitHub üzerinden güncellenen arşiv
 
-Depoda IMDb, TMDB biçimli, anime, K-drama ve Türk dizisi CSV arşivleri bulunur. Trend, poster, çeviri, ayrıntı ve fragman anahtarı için bazı ekranlar dış API’leri kullanabilir. Bir dış servis geçici olarak erişilemezse yerel arşivdeki temel keşif akışı çalışmaya devam eder.
+Vercel projesine `TMDB_API_KEY` veya `TMDB_BEARER_TOKEN` ortam değişkeni tanımlanır. İstemci anahtarı hiç görmez: `/api/tmdb` yalnızca sonuç verisini döndürür. Yerel geliştirmede aynı yol Vite middleware ile çalışır; anahtar `.env.local` içinde tutulur ve depoya eklenmez.
 
-## Gizlilik
+## Deneyim
 
-SÉRA kullanıcı tercihlerinin, beğeni kayıtlarının veya yerelde eğitilen nöral modelin ağırlıklarının bir kopyasını kendi sunucusuna göndermez. TensorFlow.js ve MobileNet model dosyaları CDN’den indirilir; analiz verisi tarayıcıda işlenir. İsterseniz tarayıcı site verisini temizleyerek tüm yerel tercihleri silebilirsiniz.
+- İlk kullanımdaki üç soruluk rota kurulumu; sonrasında sonuçlar profil doğrultusunda gelir.
+- Doğal dil araması ve hızlı duygu rotaları.
+- Canlı kaynak sayacı ve kaynak bazlı hata toleransı.
+- Yapım dosyasında spoiler’sız özet, neden uygun olduğu, izleme bağlantıları, izleme profili, kadro ve poster profili.
+- İzleme listesi: planlıyorum, izliyorum, izledim.
+- Modal erişilebilirliği: Radix Dialog ile focus trap ve `Esc` kapatma.
+- Posterler `loading="lazy"` kullanır; görseli olmayan kaynaklarda kontrollü bir kapak yedeği gösterilir.
+- Mobilde tek kolon akışı, geniş dokunma hedefleri ve azaltılmış hareket tercihi desteği.
+
+## Mimari
+
+```text
+src/
+├── components/
+│   ├── navbar/        SÉRA ana gezinme
+│   ├── hero/          editoryal giriş ve arama
+│   ├── onboarding/    ilk rota kurulumu
+│   ├── discovery/     arşiv durumu, filtreler, trendler ve kartlar
+│   ├── dossier/       yapım dosyası önizlemesi
+│   ├── modal/         erişilebilir ayrıntı penceresi
+│   ├── postercnn/     görsel profil penceresi
+│   └── watchlist/     yerel izleme listesi
+├── hooks/             arşiv Worker bağlayıcısı ve yerel saklama
+├── services/          TMDB canlı sorgu, eşleme ve yerel poster analizi
+├── data/              arayüz için küçük imza seçkisi
+├── lib/               yerel yedek öneri yardımcıları
+└── types.ts           paylaşılan TypeScript sözleşmeleri
+```
+
+Eski statik uygulama `legacy/sera-legacy.html` altında korunur. Yeni uygulama aynı mevcut veri dosyalarını kullanır; yalnızca arşivi ana iş parçacığından Worker’a taşır.
 
 ## Yerelde çalıştırma
 
 ```bash
-git clone https://github.com/caca1403/dizionerisistemi.git
-cd dizionerisistemi
-python3 -m http.server 8080
+pnpm install
+pnpm dev
 ```
 
-Ardından `http://localhost:8080` adresini açın. CSV dosyaları `fetch` ile okunduğu için `index.html` dosyasını çift tıklamak yerine yerel bir sunucu kullanın.
+Üretim derlemesi:
 
-## Teknik sınırlar
+```bash
+pnpm build
+pnpm preview
+```
 
-SÉRA’daki NLP modeli genel amaçlı bir Transformer değildir; yerel dizi arşivinin tür ve özet sinyalleriyle hızlıca eğitilen küçük bir sınıflandırıcıdır. Bu nedenle sonuç kalitesi kaynak verinin kapsamına, diline ve özet kalitesine bağlıdır. Görsel CNN de oyuncu yüzleri veya poster estetiğini ölçer; tek başına hikâye kalitesini çıkarmaz. Bu sınırlara rağmen her katmanın çalışma alanı, veri kaynağı ve etkisi arayüzde ve bu belgede açıkça belirtilmiştir.
+Bu çalışma ortamında Node yolu özelse doğrulama komutu şöyledir:
+
+```bash
+NODE=/home/cagatay/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
+$NODE node_modules/typescript/bin/tsc -b
+$NODE node_modules/vite/bin/vite.js build
+```
+
+## Gizlilik ve ağ davranışı
+
+Tercihler ve izleme listesi bir sunucuya gönderilmez. İstenen arşiv sayfası aynı origin üzerindeki sunucu proxy üzerinden, poster/backdrop görselleri ise TMDB görsel CDN’inden yüklenir. Yapımın izleme/fragman düğmeleri kullanıcıyı ilgili haricî hedefe yönlendirir.

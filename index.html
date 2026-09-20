@@ -527,6 +527,10 @@
         .modal-actions .trailer-btn { background:linear-gradient(135deg,#ed2939,#ff654f); }.modal-actions .btn-secondary { background:rgba(255,255,255,.055); }
         .alt-shows-wrapper { padding-top:24px; border-top-color:rgba(255,255,255,.09); }.alt-card { padding:8px; border-radius:13px; background:rgba(255,255,255,.035); border-color:rgba(255,255,255,.09); }.alt-card-img-wrapper { border-radius:9px; }
         @media (max-width:640px) { #customModalOverlay { align-items:end; padding:10px; } #customModalBox { max-height:calc(100dvh - 20px); padding:23px 17px 17px; border-radius:21px; } #customModalMessage { max-height:55dvh; } .modal-overlay { padding:8px; align-items:end; } .modal-content { max-height:calc(100dvh - 16px); border-radius:22px 22px 16px 16px; } .modal-header-img { height:230px; } .modal-content::after { height:230px; } .modal-body { margin-top:-52px; padding:0 18px 22px; } .modal-body h2 { font-size:2rem; } .modal-badges { gap:6px; } .modal-badges .badge { padding:6px 8px; font-size:.65rem; } .modal-summary { font-size:.86rem; line-height:1.65; } .modal-actions { grid-template-columns:repeat(2,minmax(0,1fr)); } .modal-actions .btn-action { min-height:44px; font-size:.7rem; } .cast-card { flex-basis:76px; } .cast-img { width:66px; height:66px; } }
+        /* Navigation is a compact mode switcher, never a full-width action button. */
+        .nav-tabs { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); overflow:visible; }
+        .nav-tab { width:auto !important; min-width:0; flex:unset !important; white-space:nowrap; }
+        @media (max-width:700px) { .nav-tabs { display:flex; overflow-x:auto; } .nav-tab { flex:0 0 auto !important; width:auto !important; min-width:136px; } }
     </style>
 </head>
 <body>

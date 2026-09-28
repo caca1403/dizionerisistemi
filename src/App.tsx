@@ -104,7 +104,7 @@ export default function App() {
     const local = filterSeries(series, filterFilters, tasteProfile);
     const seen = new Set<string>();
     const list: TVSeries[] = [];
-    if (filterPage === 0 && local.length > 0) {
+    if (local.length > 0) {
       for (const item of local) {
         if (!seen.has(item.id)) {
           seen.add(item.id);

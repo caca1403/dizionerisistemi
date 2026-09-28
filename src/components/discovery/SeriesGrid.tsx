@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, type UIEvent, type WheelEvent } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { Loader2, Plus, Sparkles } from 'lucide-react';
 import type { TVSeries } from '../../types';
 import { SeriesCard } from './SeriesCard';
@@ -24,8 +24,6 @@ const ArchiveCard = memo(function ArchiveCard({ item, saved, onOpen, onToggle }:
 });
 
 export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onToggle, savedIds }: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const requestLocked = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const pages = Math.min(500, Math.max(1, Math.ceil(total / 20)));
   const hasMore = page < pages - 1;
@@ -34,27 +32,24 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
   const renderedItems = items;
 
   const requestMore = useCallback(() => {
-    if (loading || !hasMore || requestLocked.current) return;
-    requestLocked.current = true;
+    if (loading || !hasMore) return;
     onPage(page + 1);
-    window.setTimeout(() => { requestLocked.current = false; }, 600);
   }, [hasMore, loading, onPage, page]);
 
   useEffect(() => {
     if (loading || !hasMore) return;
     const sentinel = sentinelRef.current;
-    const container = containerRef.current;
-    if (!sentinel || !container) return;
+    if (!sentinel) return;
 
-    // Sadece arşiv kutusu kendi içinde kaydırıldığında yeni dizi yükle;
-    // Dışarıdan ana sayfayı kaydırırken sayfa kilitlenmez veya sonsuz büyümez.
+    // Arşiv belge akışının parçası; pencerenin kendi içinde ayrı bir scroll alanı
+    // oluşturmak Lenis ve IntersectionObserver'ı birbirinden koparıyordu.
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
           requestMore();
         }
       },
-      { root: container, rootMargin: '240px' }
+      { root: null, rootMargin: '500px 0px' }
     );
 
     observer.observe(sentinel);
@@ -77,7 +72,7 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
         </a>
       </div>
     </div>
-    <div ref={containerRef} className="archive-scroll-region" data-lenis-prevent tabIndex={0} aria-label="Dizi arşivi">
+    <div className="archive-scroll-region" aria-label="Dizi arşivi">
       <div className="series-grid" aria-busy={loading}>
         {loading && !items.length
           ? Array.from({ length: 12 }, (_, index) => <div className="skeleton-card" key={index}/>)

@@ -16,13 +16,16 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
   const [snapshot, setSnapshot] = useState<ArchiveSnapshot>({ total: 0, matchTotal: 0, ready: false, sources: [source], results: [] });
   const [cacheHits, setCacheHits] = useState(0);
   const [reload, setReload] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!enabled) {
+      setBusy(false);
       setSnapshot({ total: 0, matchTotal: 0, ready: true, sources: [source], results: [] });
       return;
     }
     const controller = new AbortController();
+    setBusy(true);
     setSnapshot(current => ({
       ...current,
       ready: page === 0 ? false : current.ready,
@@ -34,6 +37,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
       fetchMultiReferenceRecommendations(filters.referenceSeries, page, controller.signal)
         .then(results => {
           if (controller.signal.aborted) return;
+          setBusy(false);
           const filtered = results.filter(item => item.imdbRating >= filters.minRating);
           const calibrated = calibrateCinePulse(filtered, page);
           setSnapshot(current => {
@@ -50,6 +54,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
         })
         .catch(() => {
           if (!controller.signal.aborted) {
+            setBusy(false);
             setSnapshot(current => ({
               ...current,
               ready: true,
@@ -66,6 +71,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
       fetchThematicCandidatePool(semanticQuery, controller.signal)
         .then(async candidates => {
           if (controller.signal.aborted) return;
+          setBusy(false);
           const allowAnimation = filters.genre === 'Animasyon' || /çizgi|anime|animasyon|cartoon|çocuk/i.test(semanticQuery);
           let filtered = candidates.filter(item => item.imdbRating >= (filters.minRating || 5.0));
           if (!allowAnimation) {
@@ -105,6 +111,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
         })
         .catch(() => {
           if (!controller.signal.aborted) {
+            setBusy(false);
             setSnapshot(current => ({
               ...current,
               ready: true,
@@ -127,6 +134,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
       : requestPage(page);
     request
       .then(data => {
+        if (controller.signal.aborted) return;
         const rankingQuery = filters.semanticQuery || filters.query;
         const scoringFilters = rankingQuery === routedFilters.query ? routedFilters : { ...routedFilters, query: rankingQuery };
         const allowAnimation = filters.genre === 'Animasyon' || /çizgi|anime|animasyon|cartoon|çocuk/i.test(rankingQuery);
@@ -158,16 +166,20 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
           });
 
         }
+        setBusy(false);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setSnapshot({ total: 0, matchTotal: 0, ready: true, sources: [{ ...source, state: 'failed', error: 'Canlı arşiv bağlantısı yenileniyor', count: 0 }], results: [] });
+        if (!controller.signal.aborted) {
+          setBusy(false);
+          setSnapshot({ total: 0, matchTotal: 0, ready: true, sources: [{ ...source, state: 'failed', error: 'Canlı arşiv bağlantısı yenileniyor', count: 0 }], results: [] });
+        }
       });
     return () => controller.abort();
   }, [enabled, filters, mode, page, profile, reload]);
 
   return {
     ...snapshot,
-    isLoading: !snapshot.ready,
+    isLoading: enabled && (busy || !snapshot.ready),
     cacheHits,
     cacheEnabled: true,
     refresh: () => { setReload(value => value + 1); setCacheHits(value => value + 1); },

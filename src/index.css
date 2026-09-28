@@ -1148,6 +1148,16 @@ main,
   .vertical-journey > *, .engine-stats-section, .engine-capabilities, .dossier-showcase, .engine-faq, .trend-atlas, .discovery-tools, .filter-matrix, .series-grid, .similarity, .archive-route-lock { animation:none !important; transform:none !important; filter:none !important; }
 }
 
+/* Keep the live catalogue in the page flow so document scrolling and its
+   viewport sentinel stay in sync with Lenis and native browser scrolling. */
+.archive-scroll-region {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 1rem 0 1.1rem !important;
+  touch-action: auto !important;
+}
+
 /* 2026 archive pass: stable native scrolling, fixed card geometry and isolated discovery labs. */
 .recommendation-engine {
   position:relative;
@@ -1198,15 +1208,15 @@ main,
 
 .archive-scroll-region {
   position: relative;
-  height: clamp(520px, 70vh, 760px);
-  max-height: 760px;
+  height: auto !important;
+  max-height: none !important;
   margin-top: 1.15rem;
   padding: 1rem .75rem 1.1rem 1rem;
-  overflow-y: auto !important;
+  overflow-y: visible !important;
   overflow-x: hidden !important;
   scroll-behavior: auto;
   overscroll-behavior-y: auto;
-  touch-action: pan-y;
+  touch-action: auto;
   scrollbar-color: var(--sera-lime) rgba(231,232,219,.08);
   scrollbar-width: thin;
   background:
@@ -2917,6 +2927,15 @@ main,
   .route-builder .session-options { grid-template-columns:1fr !important; }
   .route-builder .session-options button { min-height:92px; }
   .route-builder .guide-platform { grid-template-columns:1fr; }
+}
+
+/* The archive sentinel observes the document viewport, so keep mobile cards in
+   the same page scroll flow instead of trapping scroll inside a nested panel. */
+.archive-scroll-region {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  touch-action: auto !important;
 }
 .discovery-stream-heading{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin:1.5rem 0 .75rem;padding:.75rem 1rem;border-left:2px solid var(--acid,#d7ff38);background:rgba(255,255,255,.025)}
 .discovery-stream-heading span{font:600 .7rem/1.2 ui-monospace,monospace;letter-spacing:.18em;color:var(--acid,#d7ff38);text-transform:uppercase}.discovery-stream-heading small{color:#9aa59a;font-size:.78rem}.discovery-stream-route .discovery-stream-heading{border-color:#8de5c0}.discovery-stream-word .discovery-stream-heading{border-color:#b6a0ff}

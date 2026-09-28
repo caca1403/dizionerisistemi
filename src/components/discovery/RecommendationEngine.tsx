@@ -74,7 +74,7 @@ export function RecommendationEngine(props: Props) {
 
         <SeriesGrid
           items={props.filterItems}
-          loading={props.filterLoading && !props.filterItems.length}
+          loading={props.filterLoading}
           total={props.filterTotal}
           page={props.filterPage}
           onPage={props.onFilterPage}
@@ -86,4 +86,3 @@ export function RecommendationEngine(props: Props) {
     </section>
   );
 }
-

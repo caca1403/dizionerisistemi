@@ -29,33 +29,48 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
   const pages = Math.max(1, Math.ceil(total / 20));
   const hasMore = page < pages - 1;
 
-  // Render all items without slicing so infinite scrolling never erases previous entries
   const renderedItems = items;
 
+  const loadingRef = useRef(loading);
+  loadingRef.current = loading;
+
+  const hasMoreRef = useRef(hasMore);
+  hasMoreRef.current = hasMore;
+
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
+  const onPageRef = useRef(onPage);
+  onPageRef.current = onPage;
+
+  const lastTriggerTime = useRef(0);
+
   const requestMore = useCallback(() => {
-    if (loading || !hasMore) return;
-    onPage(page + 1);
-  }, [hasMore, loading, onPage, page]);
+    const now = Date.now();
+    if (loadingRef.current || !hasMoreRef.current) return;
+    if (now - lastTriggerTime.current < 600) return;
+    lastTriggerTime.current = now;
+    onPageRef.current(pageRef.current + 1);
+  }, []);
 
   useEffect(() => {
-    if (loading || !hasMore) return;
     const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
     const scrollRegion = scrollRef.current;
-    if (!scrollRegion) return;
+    if (!sentinel || !scrollRegion) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
+        const entry = entries[0];
+        if (entry?.isIntersecting && !loadingRef.current && hasMoreRef.current) {
           requestMore();
         }
       },
-      { root: scrollRegion, rootMargin: '400px 0px' }
+      { root: scrollRegion, rootMargin: '100px 0px' }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loading, requestMore]);
+  }, [requestMore]);
 
   return <section className="showcase" id="all-series-archive">
     <div className="section-heading archive-heading">

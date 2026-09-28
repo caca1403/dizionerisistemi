@@ -10,60 +10,66 @@ if (!apiKey) throw new Error('TMDB_API_KEY is required to build the Pages catalo
 
 const providers = { Netflix: '8', 'HBO Max': '1899', 'Disney+': '337', 'Prime Video': '119', 'Apple TV+': '350', BluTV: '341' };
 const records = new Map();
-const currentYear = new Date().getUTCFullYear();
 
 async function load(job) {
-  const url = new URL('https://api.themoviedb.org/3/discover/tv');
+  const isTopRated = job.kind === 'rated';
+  const url = new URL(`https://api.themoviedb.org/3/${isTopRated ? 'tv/top_rated' : 'discover/tv'}`);
   url.searchParams.set('api_key', apiKey);
   url.searchParams.set('language', 'tr-TR');
   url.searchParams.set('page', String(job.page));
   url.searchParams.set('include_adult', 'false');
-  url.searchParams.set('sort_by', 'popularity.desc');
-  if (job.year) {
-    url.searchParams.set('first_air_date.gte', `${job.year}-01-01`);
-    url.searchParams.set('first_air_date.lte', `${job.year}-12-31`);
+  if (!isTopRated) {
+    url.searchParams.set('sort_by', 'popularity.desc');
   }
   if (job.provider) {
     url.searchParams.set('watch_region', 'TR');
     url.searchParams.set('with_watch_providers', job.provider);
   }
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const response = await fetch(url);
-    if (response.ok) {
-      const payload = await response.json();
-      for (const item of payload.results || []) {
-        if (!item.id || !(item.name || item.original_name)) continue;
-        const existing = records.get(item.id);
-        records.set(item.id, { ...existing, ...item, platforms: [...new Set([...(existing?.platforms || []), ...(job.platform ? [job.platform] : [])])] });
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const payload = await response.json();
+        for (const item of payload.results || []) {
+          if (!item.id || !item.poster_path || !(item.name || item.original_name)) continue;
+          const existing = records.get(item.id);
+          records.set(item.id, {
+            id: item.id,
+            name: item.name,
+            original_name: item.original_name,
+            poster_path: item.poster_path,
+            backdrop_path: item.backdrop_path,
+            overview: item.overview ? item.overview.slice(0, 320) : '',
+            first_air_date: item.first_air_date,
+            vote_average: item.vote_average || 0,
+            vote_count: item.vote_count || 0,
+            popularity: Math.round(item.popularity || 0),
+            genre_ids: item.genre_ids || [],
+            platforms: [...new Set([...(existing?.platforms || []), ...(job.platform ? [job.platform] : [])])]
+          });
+        }
+        return;
       }
-      return Math.min(500, payload.total_pages || 0);
-    }
-    if (response.status !== 429 && response.status < 500) throw new Error(`TMDB catalog request failed: ${response.status}`);
-    await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1500));
+      if (response.status !== 429 && response.status < 500) return;
+    } catch {}
+    await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
   }
-  throw new Error('TMDB catalog request failed after retries');
 }
 
 async function batch(jobs) {
   for (let i = 0; i < jobs.length; i += 6) {
     await Promise.all(jobs.slice(i, i + 6).map(load));
-    if (i && i % 300 === 0) console.log(`Fetched ${i}/${jobs.length} pages; ${records.size} unique series`);
   }
 }
 
-const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => 1900 + i);
-const yearlyPages = [];
-for (let i = 0; i < years.length; i += 6) {
-  yearlyPages.push(...await Promise.all(years.slice(i, i + 6).map(async year => ({ year, pages: await load({ year, page: 1 }) }))));
-}
 const jobs = [
-  ...Array.from({ length: 500 }, (_, i) => ({ page: i + 1 })),
-  ...yearlyPages.flatMap(({ year, pages }) => Array.from({ length: Math.min(50, pages) - 1 }, (_, i) => ({ year, page: i + 2 }))),
+  ...Array.from({ length: 60 }, (_, i) => ({ kind: 'popular', page: i + 1 })),
+  ...Array.from({ length: 30 }, (_, i) => ({ kind: 'rated', page: i + 1 })),
   ...Object.entries(providers).flatMap(([platform, provider]) =>
-    Array.from({ length: 12 }, (_, i) => ({ platform, provider, page: i + 1 }))),
+    Array.from({ length: 15 }, (_, i) => ({ kind: 'provider', platform, provider, page: i + 1 }))),
 ];
 await batch(jobs);
-if (records.size < 10000) throw new Error(`Catalog unexpectedly small: ${records.size}`);
+if (records.size < 500) throw new Error(`Catalog unexpectedly small: ${records.size}`);
 await mkdir('public', { recursive: true });
 await writeFile('public/archive-catalog.json', JSON.stringify({ updatedAt: new Date().toISOString(), results: [...records.values()] }));
-console.log(`Built static Pages catalog with ${records.size} series`);
+console.log(`Built static Pages catalog with ${records.size} high-quality series`);

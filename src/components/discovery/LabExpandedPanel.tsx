@@ -156,29 +156,47 @@ export function LabExpandedPanel({
   const pages = Math.max(1, Math.ceil(total / 20));
   const hasMore = (total > 0 && page < pages - 1) || (total > items.length);
 
+  const loadingRef = useRef(loading);
+  loadingRef.current = loading;
+
+  const hasMoreRef = useRef(hasMore);
+  hasMoreRef.current = hasMore;
+
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
+  const onPageRef = useRef(onPage);
+  onPageRef.current = onPage;
+
+  const lastTriggerTime = useRef(0);
+
   const requestMore = useCallback(() => {
-    if (loading || !hasMore) return;
-    onPage(page + 1);
-  }, [hasMore, loading, onPage, page]);
+    const now = Date.now();
+    if (loadingRef.current || !hasMoreRef.current) return;
+    if (now - lastTriggerTime.current < 600) return;
+    lastTriggerTime.current = now;
+    onPageRef.current(pageRef.current + 1);
+  }, []);
 
   useEffect(() => {
-    if (loading || !hasMore || !isOpen) return;
+    if (!isOpen) return;
     const sentinel = sentinelRef.current;
     const scrollRegion = scrollRef.current;
     if (!sentinel || !scrollRegion) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
+        const entry = entries[0];
+        if (entry?.isIntersecting && !loadingRef.current && hasMoreRef.current) {
           requestMore();
         }
       },
-      { root: scrollRegion, rootMargin: '300px 0px' }
+      { root: scrollRegion, rootMargin: '100px 0px' }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isOpen, loading, requestMore]);
+  }, [isOpen, requestMore]);
 
   return (
     <div className="lab-expanded-panel" id={id} role="region" aria-label={title}>

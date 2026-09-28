@@ -15,19 +15,33 @@ const catalogOrderCache = new Map<string, CatalogResult[]>();
 const catalogGenres: Record<string, number> = { 'Aksiyon & Macera':10759, Animasyon:16, Anime:16, Belgesel:99, 'Bilim Kurgu & Fantastik':10765, Drama:18, Gizem:9648, Komedi:35, Suç:80, 'Savaş & Politik':10768, Aile:10751, Çocuk:10762, Haber:10763, Reality:10764, 'Pembe Dizi':10766, 'Talk Show':10767, Western:37 };
 const catalogMoods: Record<string, number[]> = { 'Zihin Yakan':[9648,10765], Distopya:[10765], 'Karanlık/Gerilim':[80,9648], 'Siberpunk/Teknoloji':[10765], 'Politik/Güç':[10768], Melankolik:[18], 'Yüksek Adrenalin':[10759], 'Konfor/Rahatlatıcı':[35,10751] };
 async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: number, profile?: TasteProfile | null): Promise<TMDBPage> {
-  catalogPromise ||= fetch('/dizionerisistemi/archive-catalog.json').then(async response => {
-    if (!response.ok) throw new Error('Statik dizi arşivi yüklenemedi');
+  const catalogUrl = window.location.pathname.startsWith('/dizionerisistemi')
+    ? '/dizionerisistemi/archive-catalog.json'
+    : '/archive-catalog.json';
+
+  catalogPromise ||= fetch(catalogUrl).then(async response => {
+    if (!response.ok) {
+      const fallbackUrl = catalogUrl === '/archive-catalog.json' ? '/dizionerisistemi/archive-catalog.json' : '/archive-catalog.json';
+      const fallbackRes = await fetch(fallbackUrl);
+      if (!fallbackRes.ok) throw new Error('Statik dizi arşivi yüklenemedi');
+      const data = await fallbackRes.json() as { results: CatalogResult[] };
+      return data.results;
+    }
     const data = await response.json() as { results: CatalogResult[] };
     return data.results;
   }).catch(error => { catalogPromise = undefined; throw error; });
+
   const catalog = await catalogPromise;
   const orderKey = JSON.stringify([filters, mode, profile]);
   const cachedOrder = catalogOrderCache.get(orderKey);
   if (cachedOrder) return { results: cachedOrder.slice(page * 20, (page + 1) * 20), total_results: cachedOrder.length, total_pages: Math.ceil(cachedOrder.length / 20), configured: true };
+
   const query = filters.query.trim().toLocaleLowerCase('tr-TR');
   const genre = catalogGenres[filters.genre];
   const moods = catalogMoods[filters.mood];
-  const filtered = catalog.filter(item => {
+
+  // 1. Fast lightweight raw filter
+  let candidates = catalog.filter(item => {
     const ids = item.genre_ids || [];
     return (item.vote_average || 0) >= filters.minRating
       && (!genre || ids.includes(genre))
@@ -35,20 +49,40 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
       && (!moods || moods.some(id => ids.includes(id)))
       && (filters.platform === 'Tümü' || item.platforms?.includes(filters.platform))
       && (!query || `${item.name || ''} ${item.original_name || ''} ${item.overview || ''}`.toLocaleLowerCase('tr-TR').includes(query));
-  }).map(item => ({ raw: item, mapped: mapTMDB(item, filters.platform) }))
-    .filter((item): item is { raw: CatalogResult; mapped: TVSeries } => Boolean(item.mapped))
-    .filter(({ mapped }) => mapped.emotionProfile.pacing >= filters.pacing[0] && mapped.emotionProfile.pacing <= filters.pacing[1]
-      && mapped.emotionProfile.complexity >= filters.complexity[0] && mapped.emotionProfile.complexity <= filters.complexity[1]);
-  filtered.sort((left, right) => {
-    const a = left.raw, b = right.raw;
-    if (mode === 'match') return scorePersonalSeries(right.mapped, filters, profile) - scorePersonalSeries(left.mapped, filters, profile) || (b.popularity || 0) - (a.popularity || 0);
-    return mode === 'rating'
-    ? (b.vote_average || 0) - (a.vote_average || 0)
-    : mode === 'newest' ? (b.first_air_date || '').localeCompare(a.first_air_date || '')
-    : (b.popularity || 0) - (a.popularity || 0);
   });
-  const ordered = filtered.map(item => item.raw);
-  if (catalogOrderCache.size >= 3) catalogOrderCache.delete(catalogOrderCache.keys().next().value!);
+
+  // Limit pool size for heavy scoring to keep UI at 60fps
+  if (candidates.length > 1000) {
+    candidates = candidates.sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 1000);
+  }
+
+  // 2. Map & Precompute personal score ONCE per candidate
+  const scoredItems = candidates.map(item => {
+    const mapped = mapTMDB(item, filters.platform);
+    if (!mapped) return null;
+    if (mapped.emotionProfile.pacing < filters.pacing[0] || mapped.emotionProfile.pacing > filters.pacing[1]) return null;
+    if (mapped.emotionProfile.complexity < filters.complexity[0] || mapped.emotionProfile.complexity > filters.complexity[1]) return null;
+
+    const score = mode === 'match' ? scorePersonalSeries(mapped, filters, profile) : 0;
+    return {
+      raw: item,
+      score,
+      popularity: item.popularity || 0,
+      voteAverage: item.vote_average || 0,
+      firstAirDate: item.first_air_date || ''
+    };
+  }).filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  // 3. Ultra-fast primitive sort
+  scoredItems.sort((left, right) => {
+    if (mode === 'match') return right.score - left.score || right.popularity - left.popularity;
+    if (mode === 'rating') return right.voteAverage - left.voteAverage;
+    if (mode === 'newest') return right.firstAirDate.localeCompare(left.firstAirDate);
+    return right.popularity - left.popularity;
+  });
+
+  const ordered = scoredItems.map(item => item.raw);
+  if (catalogOrderCache.size >= 8) catalogOrderCache.delete(catalogOrderCache.keys().next().value!);
   catalogOrderCache.set(orderKey, ordered);
   setRuntimeStatus('tmdb', 'ready');
   return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: ordered.length, total_pages: Math.ceil(ordered.length / 20), configured: true };

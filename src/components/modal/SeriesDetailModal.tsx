@@ -171,24 +171,31 @@ export function SeriesDetailModal({
   }, [open, series, candidates, profile, history]);
 
   // Infinite scroll trigger for similar series inside the modal
+  const similarLengthRef = useRef(similar.length);
+  similarLengthRef.current = similar.length;
+  const lastSimilarTrigger = useRef(0);
+
   useEffect(() => {
-    if (!open || visibleSimilarCount >= similar.length) return;
+    if (!open) return;
     const sentinel = similarSentinelRef.current;
     const scrollContainer = scrollRef.current;
     if (!sentinel || !scrollContainer) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisibleSimilarCount(c => Math.min(similar.length, c + 12));
+        const entry = entries[0];
+        const now = Date.now();
+        if (entry?.isIntersecting && now - lastSimilarTrigger.current > 500) {
+          lastSimilarTrigger.current = now;
+          setVisibleSimilarCount(c => (c < similarLengthRef.current ? Math.min(similarLengthRef.current, c + 12) : c));
         }
       },
-      { root: scrollContainer, rootMargin: '250px 0px' }
+      { root: scrollContainer, rootMargin: '80px 0px' }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [open, similar.length, visibleSimilarCount]);
+  }, [open]);
 
   if (!series || !activeSeries) return null;
 

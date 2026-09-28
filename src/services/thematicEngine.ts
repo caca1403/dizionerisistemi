@@ -529,6 +529,7 @@ function expandCompoundPhrase(normalized: string): string[] {
 
 export async function fetchThematicCandidatePool(
   query: string,
+  page = 0,
   signal?: AbortSignal
 ): Promise<TVSeries[]> {
   const trimmed = query.trim();
@@ -543,7 +544,7 @@ export async function fetchThematicCandidatePool(
 
   // Add theme flagship queries
   if (primaryTheme) {
-    primaryTheme.searchQueries.slice(0, 6).forEach(sq => searchQueriesToRun.add(sq));
+    primaryTheme.searchQueries.slice(0, 8).forEach(sq => searchQueriesToRun.add(sq));
   }
 
   // Add compound phrase expansions (the transformer-lite layer)
@@ -561,26 +562,29 @@ export async function fetchThematicCandidatePool(
   const candidateMap = new Map<string, TVSeries>();
 
   // 1. Add canonical local series immediately (high quality, instant)
-  for (const item of canonicalSeries) {
-    candidateMap.set(item.id, item);
+  if (page === 0) {
+    for (const item of canonicalSeries) {
+      candidateMap.set(item.id, item);
+    }
   }
 
-  // 2. Query TMDB in parallel for all relevant queries
-  const fetchPromises = Array.from(searchQueriesToRun).map(async (searchQuery) => {
+  // 2. Query TMDB in parallel for all relevant queries with page offset
+  const queryArray = Array.from(searchQueriesToRun);
+  const fetchPromises = queryArray.map(async (searchQuery) => {
     try {
       const pageData = await getTMDBPage(
         {
           mood: 'Tümü',
           genre: primaryTheme?.targetGenres[0] || 'Tümü',
           platform: 'Tümü',
-          minRating: 5.5,
+          minRating: 5.0,
           status: 'Tümü',
           pacing: [0, 100],
           complexity: [0, 100],
           query: searchQuery,
         },
         'match',
-        0,
+        page,
         signal
       );
 

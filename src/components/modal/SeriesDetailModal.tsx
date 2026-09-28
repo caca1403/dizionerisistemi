@@ -1,8 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { ChevronRight, Cpu, FolderPlus, X } from 'lucide-react';
-import { useEffect, useRef, useState, type WheelEvent } from 'react';
+import { ChevronRight, Cpu, FolderPlus, Plus, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type WheelEvent } from 'react';
 import type { CustomList, TasteProfile, TVSeries, WatchState } from '../../types';
-import { getTMDBDetails } from '../../services/tmdbLive';
+import { getTMDBDetails, getTMDBRecommendations } from '../../services/tmdbLive';
 import { SeraSeriesDossier, type DossierStatus } from '../dossier/SeraSeriesDossier';
 import { calibrateCinePulse } from '../../lib/recommend';
 import { TrailerModal } from './TrailerModal';
@@ -85,10 +85,10 @@ function computeInstantSimilarSeries(
     })
     .filter(item => item.hasShared)
     .sort((a, b) => b.rawScore - a.rawScore)
-    .slice(0, 6)
+    .slice(0, 60)
     .map((item, idx) => ({
       ...item.candidate,
-      matchScore: Math.min(97, Math.max(68, Math.round(95 - idx * 3.8)))
+      matchScore: Math.min(97, Math.max(55, Math.round(96 - idx * 1.2)))
     }));
 
   return calibrateCinePulse(scored, 0);
@@ -111,7 +111,9 @@ export function SeriesDetailModal({
   const [dossier, setDossier] = useState<TVSeries | null>(series);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [similar, setSimilar] = useState<TVSeries[]>([]);
+  const [visibleSimilarCount, setVisibleSimilarCount] = useState(12);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const similarSentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -132,10 +134,11 @@ export function SeriesDetailModal({
 
   const activeSeries = dossier?.id === series?.id ? dossier : series;
 
-  // Immediate similarity calculation on open (0 ms)
+  // Immediate similarity calculation on open (0 ms) + background TMDB recommendations
   useEffect(() => {
     setDossier(series);
     setTrailerOpen(false);
+    setVisibleSimilarCount(12);
     scrollRef.current?.scrollTo({ top: 0 });
 
     if (!open || !series) {
@@ -153,8 +156,39 @@ export function SeriesDetailModal({
       if (!controller.signal.aborted) setDossier(next);
     }).catch(() => undefined);
 
+    // Background TMDB similar recommendations to enrich pool beyond catalog
+    getTMDBRecommendations(series.id, 1, controller.signal).then(tmdbRecs => {
+      if (controller.signal.aborted || !tmdbRecs.length) return;
+      setSimilar(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newRecs = tmdbRecs.filter(r => !existingIds.has(r.id) && r.id !== series.id);
+        if (!newRecs.length) return prev;
+        return [...prev, ...newRecs];
+      });
+    }).catch(() => undefined);
+
     return () => controller.abort();
   }, [open, series, candidates, profile, history]);
+
+  // Infinite scroll trigger for similar series inside the modal
+  useEffect(() => {
+    if (!open || visibleSimilarCount >= similar.length) return;
+    const sentinel = similarSentinelRef.current;
+    const scrollContainer = scrollRef.current;
+    if (!sentinel || !scrollContainer) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleSimilarCount(c => Math.min(similar.length, c + 12));
+        }
+      },
+      { root: scrollContainer, rootMargin: '250px 0px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [open, similar.length, visibleSimilarCount]);
 
   if (!series || !activeSeries) return null;
 
@@ -200,19 +234,38 @@ export function SeriesDetailModal({
             />
 
             <section className="detail-similar" aria-labelledby="detail-similar-title">
-              <header><div><p className="eyebrow"><Cpu size={13}/> KİŞİSEL BENZERLİK</p><h3 id="detail-similar-title">Bu dosyanın izlerini taşıyanlar.</h3></div><small>Duygu, tür ve anlatı DNA eşleşmesi</small></header>
+              <header>
+                <div>
+                  <p className="eyebrow"><Cpu size={13}/> KİŞİSEL BENZERLİK</p>
+                  <h3 id="detail-similar-title">Bu dosyanın izlerini taşıyanlar.</h3>
+                </div>
+                <small>Duygu, tür ve anlatı DNA eşleşmesi ({similar.length} yapım)</small>
+              </header>
               {similar.length > 0 ? (
-                <div className="detail-similar-grid">
-                  {similar.map(item => (
-                    <button key={item.id} onClick={() => onOpenSeries(item)}>
-                      <img src={item.posterUrl} alt="" loading="lazy"/>
-                      <span>
-                        <b>{item.title}</b>
-                        <small>%{item.matchScore} · {item.genres.slice(0, 2).join(' / ')}</small>
-                      </span>
-                      <ChevronRight size={15}/>
-                    </button>
-                  ))}
+                <div className="detail-similar-container">
+                  <div className="detail-similar-grid">
+                    {similar.slice(0, visibleSimilarCount).map(item => (
+                      <button key={item.id} onClick={() => onOpenSeries(item)}>
+                        <img src={item.posterUrl} alt="" loading="lazy"/>
+                        <span>
+                          <b>{item.title}</b>
+                          <small>%{item.matchScore} · {item.genres.slice(0, 2).join(' / ')}</small>
+                        </span>
+                        <ChevronRight size={15}/>
+                      </button>
+                    ))}
+                  </div>
+                  {visibleSimilarCount < similar.length && (
+                    <div ref={similarSentinelRef} className="detail-similar-sentinel">
+                      <button
+                        type="button"
+                        className="detail-similar-more-btn"
+                        onClick={() => setVisibleSimilarCount(c => Math.min(similar.length, c + 12))}
+                      >
+                        <Plus size={14} /> Daha Fazla Benzer Yapım Yükle ({visibleSimilarCount} / {similar.length})
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </section>

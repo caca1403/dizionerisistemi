@@ -24,8 +24,9 @@ const ArchiveCard = memo(function ArchiveCard({ item, saved, onOpen, onToggle }:
 });
 
 export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onToggle, savedIds }: Props) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const pages = Math.min(500, Math.max(1, Math.ceil(total / 20)));
+  const pages = Math.max(1, Math.ceil(total / 20));
   const hasMore = page < pages - 1;
 
   // Render all items without slicing so infinite scrolling never erases previous entries
@@ -41,15 +42,15 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
-    // Arşiv belge akışının parçası; pencerenin kendi içinde ayrı bir scroll alanı
-    // oluşturmak Lenis ve IntersectionObserver'ı birbirinden koparıyordu.
+    const scrollRegion = scrollRef.current;
+    if (!scrollRegion) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
           requestMore();
         }
       },
-      { root: null, rootMargin: '500px 0px' }
+      { root: scrollRegion, rootMargin: '400px 0px' }
     );
 
     observer.observe(sentinel);
@@ -72,7 +73,7 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
         </a>
       </div>
     </div>
-    <div className="archive-scroll-region" aria-label="Dizi arşivi">
+    <div ref={scrollRef} className="archive-scroll-region" aria-label="Dizi arşivi" tabIndex={0} data-lenis-prevent>
       <div className="series-grid" aria-busy={loading}>
         {loading && !items.length
           ? Array.from({ length: 12 }, (_, index) => <div className="skeleton-card" key={index}/>)

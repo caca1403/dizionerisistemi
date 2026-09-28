@@ -68,7 +68,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
     // Lab 02: Kelimeden ve Sahneden Keşif - Tematik & Anlamsal Motor
     if (filters.semanticQuery && filters.semanticQuery.trim().length >= 2) {
       const semanticQuery = filters.semanticQuery.trim();
-      fetchThematicCandidatePool(semanticQuery, controller.signal)
+      fetchThematicCandidatePool(semanticQuery, page, controller.signal)
         .then(async candidates => {
           if (controller.signal.aborted) return;
           setBusy(false);
@@ -137,15 +137,10 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
         if (controller.signal.aborted) return;
         const rankingQuery = filters.semanticQuery || filters.query;
         const scoringFilters = rankingQuery === routedFilters.query ? routedFilters : { ...routedFilters, query: rankingQuery };
-        const allowAnimation = filters.genre === 'Animasyon' || /çizgi|anime|animasyon|cartoon|çocuk/i.test(rankingQuery);
         let results = data.results
           .map(item => mapTMDB(item, routedFilters.platform))
           .filter((item): item is NonNullable<typeof item> => Boolean(item))
           .filter(item => item.imdbRating >= filters.minRating);
-        
-        if (!allowAnimation) {
-          results = results.filter(item => !item.genres.includes('Animasyon') && !/çizgi|animasyon|anime|cartoon/i.test(item.title));
-        }
 
         results = results
           .map(item => ({ ...item, matchScore: scorePersonalSeries(item, scoringFilters, profile) }))

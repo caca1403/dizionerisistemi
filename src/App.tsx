@@ -23,7 +23,7 @@ import { CinemaWelcome } from './components/welcome/CinemaWelcome';
 
 import { findMatchingThemes } from './services/thematicEngine';
 
-const initialFilters: Filters = { mood: 'Tümü', genre: 'Tümü', platform: 'Tümü', minRating: 7, status: 'Tümü', pacing: [0, 100], complexity: [0, 100], query: '' };
+const initialFilters: Filters = { mood: 'Tümü', genre: 'Tümü', platform: 'Tümü', minRating: 0, status: 'Tümü', pacing: [0, 100], complexity: [0, 100], query: '' };
 const wordDiscoveryFilters = (value: string): Pick<Filters, 'mood' | 'genre'> => {
   const themes = findMatchingThemes(value);
   if (themes.length > 0) {

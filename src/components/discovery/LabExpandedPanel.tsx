@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { BookmarkPlus, Check, ChevronUp, Eye, Loader2, Plus, Sparkles, Star, X } from 'lucide-react';
 import type { TVSeries } from '../../types';
 
@@ -151,7 +151,34 @@ export function LabExpandedPanel({
 }: Props) {
   if (!isOpen) return null;
 
-  const hasMore = items.length < total;
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const pages = Math.max(1, Math.ceil(total / 20));
+  const hasMore = (total > 0 && page < pages - 1) || (total > items.length);
+
+  const requestMore = useCallback(() => {
+    if (loading || !hasMore) return;
+    onPage(page + 1);
+  }, [hasMore, loading, onPage, page]);
+
+  useEffect(() => {
+    if (loading || !hasMore || !isOpen) return;
+    const sentinel = sentinelRef.current;
+    const scrollRegion = scrollRef.current;
+    if (!sentinel || !scrollRegion) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          requestMore();
+        }
+      },
+      { root: scrollRegion, rootMargin: '300px 0px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isOpen, loading, requestMore]);
 
   return (
     <div className="lab-expanded-panel" id={id} role="region" aria-label={title}>
@@ -182,7 +209,13 @@ export function LabExpandedPanel({
         </div>
       </header>
 
-      <div className="lab-expanded-body">
+      <div
+        ref={scrollRef}
+        className="lab-expanded-body lab-scroll-region"
+        tabIndex={0}
+        data-lenis-prevent
+        data-lenis-prevent-wheel
+      >
         {loading && !items.length ? (
           <div className="lab-expanded-skeleton-grid">
             {Array.from({ length: 4 }, (_, i) => (
@@ -190,19 +223,22 @@ export function LabExpandedPanel({
             ))}
           </div>
         ) : items.length > 0 ? (
-          <div className="lab-expanded-grid">
-            {items.map((series) => (
-              <PanelCard
-                key={series.id}
-                item={series}
-                onOpen={onOpen}
-                onToggle={onToggle}
-                isSaved={savedIds.has(series.id)}
-                onAddAsReference={onAddAsReference}
-                isReference={referenceIds?.has(series.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="lab-expanded-grid">
+              {items.map((series) => (
+                <PanelCard
+                  key={series.id}
+                  item={series}
+                  onOpen={onOpen}
+                  onToggle={onToggle}
+                  isSaved={savedIds.has(series.id)}
+                  onAddAsReference={onAddAsReference}
+                  isReference={referenceIds?.has(series.id)}
+                />
+              ))}
+            </div>
+            <div ref={sentinelRef} className="lab-scroll-sentinel" aria-hidden="true" />
+          </>
         ) : (
           <div className="lab-expanded-empty">
             <Sparkles size={20} />

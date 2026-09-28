@@ -28,6 +28,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Build static TV catalog
+        run: node scripts/build-static-catalog.mjs
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+
       - name: Build project
         run: pnpm run build
 

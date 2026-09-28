@@ -6,6 +6,36 @@ const memory = new Map<string, { expires: number; data: TMDBPage }>();
 const detailMemory = new Map<string, { expires: number; data: TMDBDetails; providers?: TMDBWatchProviders }>();
 type TMDBResult = { id:number; name?:string; original_name?:string; overview?:string; first_air_date?:string; poster_path?:string|null; backdrop_path?:string|null; vote_average?:number; vote_count?:number; popularity?:number; genre_ids?:number[] };
 type TMDBPage = { results: TMDBResult[]; total_results: number; total_pages: number; configured?: boolean };
+type CatalogResult = TMDBResult & { platforms?: string[] };
+let catalogPromise: Promise<CatalogResult[]> | undefined;
+const catalogGenres: Record<string, number> = { 'Aksiyon & Macera':10759, Animasyon:16, Belgesel:99, 'Bilim Kurgu & Fantastik':10765, Drama:18, Gizem:9648, Komedi:35, Suç:80, 'Savaş & Politik':10768, Aile:10751 };
+const catalogMoods: Record<string, number[]> = { 'Zihin Yakan':[9648,10765], Distopya:[10765], 'Karanlık/Gerilim':[80,9648], 'Siberpunk/Teknoloji':[10765], 'Politik/Güç':[10768], Melankolik:[18], 'Yüksek Adrenalin':[10759], 'Konfor/Rahatlatıcı':[35,10751] };
+async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: number): Promise<TMDBPage> {
+  catalogPromise ||= fetch('/dizionerisistemi/archive-catalog.json').then(async response => {
+    if (!response.ok) throw new Error('Statik dizi arşivi yüklenemedi');
+    const data = await response.json() as { results: CatalogResult[] };
+    return data.results;
+  }).catch(error => { catalogPromise = undefined; throw error; });
+  const catalog = await catalogPromise;
+  const query = filters.query.trim().toLocaleLowerCase('tr-TR');
+  const genre = catalogGenres[filters.genre];
+  const moods = catalogMoods[filters.mood];
+  const filtered = catalog.filter(item => {
+    const ids = item.genre_ids || [];
+    return (item.vote_average || 0) >= filters.minRating
+      && (filters.genre === 'Animasyon' || !ids.includes(16))
+      && (!genre || ids.includes(genre))
+      && (!moods || moods.some(id => ids.includes(id)))
+      && (filters.platform === 'Tümü' || item.platforms?.includes(filters.platform))
+      && (!query || `${item.name || ''} ${item.original_name || ''} ${item.overview || ''}`.toLocaleLowerCase('tr-TR').includes(query));
+  });
+  filtered.sort((a, b) => mode === 'rating'
+    ? (b.vote_average || 0) - (a.vote_average || 0)
+    : mode === 'newest' ? (b.first_air_date || '').localeCompare(a.first_air_date || '')
+    : (b.popularity || 0) - (a.popularity || 0));
+  setRuntimeStatus('tmdb', 'ready');
+  return { results: filtered.slice(page * 20, (page + 1) * 20), total_results: filtered.length, total_pages: Math.ceil(filtered.length / 20), configured: true };
+}
 type TMDBDetails = TMDBResult & {
   status?: string;
   number_of_seasons?: number;
@@ -71,7 +101,7 @@ export const mapTMDB=(item:TMDBResult, selectedPlatform: TVSeries['platforms'][n
     voteCount:item.vote_count||0
   };
 };
-export async function getTMDBPage(filters: Filters, mode: ArchiveRankMode, page: number, signal?: AbortSignal) {const params=new URLSearchParams({mode,page:String(page+1),mood:filters.mood,genre:filters.genre,platform:filters.platform,status:filters.status});if(filters.query.trim())params.set('q',filters.query.trim());const key=params.toString();const cached=memory.get(key);if(cached&&cached.expires>Date.now())return cached.data;const response=await fetch(`/api/tmdb?${key}`,{signal});if(!response.ok){setRuntimeStatus('tmdb','failed');throw new Error('TMDB yanıt vermedi');}const data=await response.json() as TMDBPage;setRuntimeStatus('tmdb','ready');memory.set(key,{data,expires:Date.now()+5*60_000});return data;}
+export async function getTMDBPage(filters: Filters, mode: ArchiveRankMode, page: number, signal?: AbortSignal) {if(window.location.hostname.endsWith('github.io'))return getCatalogPage(filters,mode,page);const params=new URLSearchParams({mode,page:String(page+1),mood:filters.mood,genre:filters.genre,platform:filters.platform,status:filters.status});if(filters.query.trim())params.set('q',filters.query.trim());const key=params.toString();const cached=memory.get(key);if(cached&&cached.expires>Date.now())return cached.data;const response=await fetch(`/api/tmdb?${key}`,{signal});if(!response.ok){setRuntimeStatus('tmdb','failed');throw new Error('TMDB yanıt vermedi');}const data=await response.json() as TMDBPage;setRuntimeStatus('tmdb','ready');memory.set(key,{data,expires:Date.now()+5*60_000});return data;}
 export async function searchLiveTMDB(query:string, signal?:AbortSignal){if(query.trim().length<2)return [];const data=await getTMDBPage({mood:'Tümü',genre:'Tümü',platform:'Tümü',minRating:0,status:'Tümü',pacing:[0,100],complexity:[0,100],query},'match',0,signal);return data.results.map(item=>mapTMDB(item)).filter((item):item is TVSeries=>Boolean(item)).slice(0,8);}
 
 const mockTmdbMap: Record<string, string> = {
@@ -360,5 +390,3 @@ export async function fetchMultiReferenceRecommendations(
 
   return scored.sort((a, b) => b.matchScore - a.matchScore);
 }
-
-

@@ -101,25 +101,10 @@ export default function App() {
   const filterResults = useMemo(() => {
     if (!tasteProfile) return [];
     const remote = filterArchive.results;
+    if (remote.length > 0 || filterArchive.sources[0]?.state === 'ready') return remote;
     const local = filterSeries(series, filterFilters, tasteProfile);
-    const seen = new Set<string>();
-    const list: TVSeries[] = [];
-    if (local.length > 0) {
-      for (const item of local) {
-        if (!seen.has(item.id)) {
-          seen.add(item.id);
-          list.push(item);
-        }
-      }
-    }
-    for (const item of remote) {
-      if (!seen.has(item.id)) {
-        seen.add(item.id);
-        list.push(item);
-      }
-    }
-    return list;
-  }, [filterArchive.results, filterFilters, tasteProfile, filterPage]);
+    return local;
+  }, [filterArchive.results, filterArchive.sources, filterFilters, tasteProfile]);
   const spotlight = useMemo(() => { const visualArchive = filterArchive.results.filter(item => item.posterUrl && item.backdropUrl); if (!visualArchive.length) return series.find(item => item.id === 'ted-lasso') ?? series[0]; const day = Math.floor(Date.now() / 86_400_000); return visualArchive[day % visualArchive.length]; }, [filterArchive.results]);
   const archivePool = useMemo(() => [...series, ...routeArchive.results, ...wordArchive.results, ...filterArchive.results], [routeArchive.results, wordArchive.results, filterArchive.results]);
   const savedIds = useMemo(() => new Set(watchlist.map(item => item.seriesId)), [watchlist]);

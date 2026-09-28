@@ -86,10 +86,14 @@ function computeInstantSimilarSeries(
     .filter(item => item.hasShared)
     .sort((a, b) => b.rawScore - a.rawScore)
     .slice(0, 60)
-    .map((item, idx) => ({
-      ...item.candidate,
-      matchScore: Math.min(97, Math.max(55, Math.round(96 - idx * 1.2)))
-    }));
+    .map((item) => {
+      // Map rawScore into natural 75% to 99% similarity for related productions
+      const sim = Math.min(99, Math.max(72, Math.round(72 + (item.rawScore - 50) * 0.4)));
+      return {
+        ...item.candidate,
+        matchScore: sim,
+      };
+    });
 
   return calibrateCinePulse(scored, 0);
 }

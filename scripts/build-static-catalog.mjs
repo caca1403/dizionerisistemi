@@ -11,6 +11,19 @@ if (!apiKey) throw new Error('TMDB_API_KEY is required to build the Pages catalo
 const providers = { Netflix: '8', 'HBO Max': '1899', 'Disney+': '337', 'Prime Video': '119', 'Apple TV+': '350', BluTV: '341' };
 const records = new Map();
 
+const genres = {
+  'Aksiyon & Macera': '10759',
+  'Animasyon': '16',
+  'Komedi': '35',
+  'Suç': '80',
+  'Belgesel': '99',
+  'Drama': '18',
+  'Gizem': '9648',
+  'Bilim Kurgu & Fantastik': '10765',
+  'Savaş & Politik': '10768',
+  'Western': '37',
+};
+
 async function load(job) {
   const isTopRated = job.kind === 'rated';
   const url = new URL(`https://api.themoviedb.org/3/${isTopRated ? 'tv/top_rated' : 'discover/tv'}`);
@@ -20,6 +33,10 @@ async function load(job) {
   url.searchParams.set('include_adult', 'false');
   if (!isTopRated) {
     url.searchParams.set('sort_by', 'popularity.desc');
+  }
+  if (job.genre) {
+    url.searchParams.set('with_genres', job.genre);
+    url.searchParams.set('vote_count.gte', '20');
   }
   if (job.provider) {
     url.searchParams.set('watch_region', 'TR');
@@ -57,16 +74,18 @@ async function load(job) {
 }
 
 async function batch(jobs) {
-  for (let i = 0; i < jobs.length; i += 6) {
-    await Promise.all(jobs.slice(i, i + 6).map(load));
+  for (let i = 0; i < jobs.length; i += 8) {
+    await Promise.all(jobs.slice(i, i + 8).map(load));
   }
 }
 
 const jobs = [
-  ...Array.from({ length: 60 }, (_, i) => ({ kind: 'popular', page: i + 1 })),
-  ...Array.from({ length: 30 }, (_, i) => ({ kind: 'rated', page: i + 1 })),
+  ...Array.from({ length: 80 }, (_, i) => ({ kind: 'popular', page: i + 1 })),
+  ...Array.from({ length: 40 }, (_, i) => ({ kind: 'rated', page: i + 1 })),
   ...Object.entries(providers).flatMap(([platform, provider]) =>
-    Array.from({ length: 15 }, (_, i) => ({ kind: 'provider', platform, provider, page: i + 1 }))),
+    Array.from({ length: 20 }, (_, i) => ({ kind: 'provider', platform, provider, page: i + 1 }))),
+  ...Object.entries(genres).flatMap(([, genreId]) =>
+    Array.from({ length: 15 }, (_, i) => ({ kind: 'genre', genre: genreId, page: i + 1 }))),
 ];
 await batch(jobs);
 if (records.size < 500) throw new Error(`Catalog unexpectedly small: ${records.size}`);

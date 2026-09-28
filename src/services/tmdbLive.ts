@@ -11,7 +11,8 @@ type TMDBResult = { id:number; name?:string; original_name?:string; original_lan
 type TMDBPage = { results: TMDBResult[]; total_results: number; total_pages: number; configured?: boolean };
 type CatalogResult = TMDBResult & { platforms?: string[] };
 let catalogPromise: Promise<CatalogResult[]> | undefined;
-const catalogOrderCache = new Map<string, CatalogResult[]>();
+type CachedCatalogOrder = { items: CatalogResult[]; total: number };
+const catalogOrderCache = new Map<string, CachedCatalogOrder>();
 const catalogGenres: Record<string, number> = { 'Aksiyon & Macera':10759, Animasyon:16, Anime:16, Belgesel:99, 'Bilim Kurgu & Fantastik':10765, Drama:18, Gizem:9648, Komedi:35, Suç:80, 'Savaş & Politik':10768, Aile:10751, Çocuk:10762, Haber:10763, Reality:10764, 'Pembe Dizi':10766, 'Talk Show':10767, Western:37 };
 const catalogMoods: Record<string, number[]> = { 'Zihin Yakan':[9648,10765], Distopya:[10765], 'Karanlık/Gerilim':[80,9648], 'Siberpunk/Teknoloji':[10765], 'Politik/Güç':[10768], Melankolik:[18], 'Yüksek Adrenalin':[10759], 'Konfor/Rahatlatıcı':[35,10751] };
 async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: number, profile?: TasteProfile | null): Promise<TMDBPage> {
@@ -34,13 +35,20 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
   const catalog = await catalogPromise;
   const orderKey = JSON.stringify([filters, mode, profile]);
   const cachedOrder = catalogOrderCache.get(orderKey);
-  if (cachedOrder) return { results: cachedOrder.slice(page * 20, (page + 1) * 20), total_results: cachedOrder.length, total_pages: Math.ceil(cachedOrder.length / 20), configured: true };
+  if (cachedOrder) {
+    return {
+      results: cachedOrder.items.slice(page * 20, (page + 1) * 20),
+      total_results: cachedOrder.total,
+      total_pages: Math.ceil(cachedOrder.total / 20),
+      configured: true
+    };
+  }
 
   const query = filters.query.trim().toLocaleLowerCase('tr-TR');
   const genre = catalogGenres[filters.genre];
   const moods = catalogMoods[filters.mood];
 
-  // 1. Fast lightweight raw filter
+  // 1. Fast lightweight raw filter across the entire catalog
   const candidates = catalog.filter(item => {
     const ids = item.genre_ids || [];
     return (item.vote_average || 0) >= filters.minRating
@@ -51,16 +59,8 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
       && (!query || `${item.name || ''} ${item.original_name || ''} ${item.overview || ''}`.toLocaleLowerCase('tr-TR').includes(query));
   });
 
-  const totalFilteredCount = candidates.length;
-
-  // Pool for fine scoring
-  let pool = candidates;
-  if (pool.length > 2500) {
-    pool = pool.sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 2500);
-  }
-
-  // 2. Map & Precompute personal score ONCE per candidate
-  const scoredItems = pool.map(item => {
+  // 2. Map & Precompute personal score ONCE per candidate across all matching candidates
+  const scoredItems = candidates.map(item => {
     const mapped = mapTMDB(item, filters.platform);
     if (!mapped) return null;
     if (mapped.emotionProfile.pacing < filters.pacing[0] || mapped.emotionProfile.pacing > filters.pacing[1]) return null;
@@ -86,9 +86,9 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
 
   const ordered = scoredItems.map(item => item.raw);
   if (catalogOrderCache.size >= 8) catalogOrderCache.delete(catalogOrderCache.keys().next().value!);
-  catalogOrderCache.set(orderKey, ordered);
+  catalogOrderCache.set(orderKey, { items: ordered, total: scoredItems.length });
   setRuntimeStatus('tmdb', 'ready');
-  return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: totalFilteredCount, total_pages: Math.ceil(totalFilteredCount / 20), configured: true };
+  return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: scoredItems.length, total_pages: Math.ceil(scoredItems.length / 20), configured: true };
 }
 type TMDBDetails = TMDBResult & {
   status?: string;

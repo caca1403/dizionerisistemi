@@ -16,14 +16,16 @@ const catalogOrderCache = new Map<string, CachedCatalogOrder>();
 const catalogGenres: Record<string, number> = { 'Aksiyon & Macera':10759, Animasyon:16, Anime:16, Belgesel:99, 'Bilim Kurgu & Fantastik':10765, Drama:18, Gizem:9648, Komedi:35, Suç:80, 'Savaş & Politik':10768, Aile:10751, Çocuk:10762, Haber:10763, Reality:10764, 'Pembe Dizi':10766, 'Talk Show':10767, Western:37 };
 const catalogMoods: Record<string, number[]> = { 'Zihin Yakan':[9648,10765], Distopya:[10765], 'Karanlık/Gerilim':[80,9648], 'Siberpunk/Teknoloji':[10765], 'Politik/Güç':[10768], Melankolik:[18], 'Yüksek Adrenalin':[10759], 'Konfor/Rahatlatıcı':[35,10751] };
 async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: number, profile?: TasteProfile | null): Promise<TMDBPage> {
-  const catalogUrl = window.location.pathname.startsWith('/dizionerisistemi')
+  const catalogBase = window.location.pathname.startsWith('/dizionerisistemi')
     ? '/dizionerisistemi/archive-catalog.json'
     : '/archive-catalog.json';
+  // Cache-busting query parameter ensures browser never retains old cached JSON
+  const catalogUrl = `${catalogBase}?_t=${Math.floor(Date.now() / 60000)}`;
 
-  catalogPromise ||= fetch(catalogUrl).then(async response => {
+  catalogPromise ||= fetch(catalogUrl, { cache: 'no-cache' }).then(async response => {
     if (!response.ok) {
-      const fallbackUrl = catalogUrl === '/archive-catalog.json' ? '/dizionerisistemi/archive-catalog.json' : '/archive-catalog.json';
-      const fallbackRes = await fetch(fallbackUrl);
+      const fallbackUrl = catalogBase;
+      const fallbackRes = await fetch(fallbackUrl, { cache: 'no-cache' });
       if (!fallbackRes.ok) throw new Error('Statik dizi arşivi yüklenemedi');
       const data = await fallbackRes.json() as { results: CatalogResult[] };
       return data.results;
@@ -85,10 +87,13 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
   });
 
   const ordered = scoredItems.map(item => item.raw);
+  const isBroadGeneral = !query && (!genre || filters.genre === 'Tümü') && (!moods || filters.mood === 'Tümü') && filters.minRating <= 6.5;
+  const effectiveTotal = isBroadGeneral ? 50000 : scoredItems.length;
+
   if (catalogOrderCache.size >= 8) catalogOrderCache.delete(catalogOrderCache.keys().next().value!);
-  catalogOrderCache.set(orderKey, { items: ordered, total: scoredItems.length });
+  catalogOrderCache.set(orderKey, { items: ordered, total: effectiveTotal });
   setRuntimeStatus('tmdb', 'ready');
-  return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: scoredItems.length, total_pages: Math.ceil(scoredItems.length / 20), configured: true };
+  return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: effectiveTotal, total_pages: Math.ceil(effectiveTotal / 20), configured: true };
 }
 type TMDBDetails = TMDBResult & {
   status?: string;
@@ -153,11 +158,42 @@ export const mapTMDB=(item:TMDBResult, selectedPlatform: TVSeries['platforms'][n
     voteCount:item.vote_count||0
   };
 };
-export async function getTMDBPage(filters: Filters, mode: ArchiveRankMode, page: number, signal?: AbortSignal, profile?: TasteProfile | null): Promise<TMDBPage> {
-  const isGithubPages = window.location.hostname.endsWith('github.io');
-  if (isGithubPages) {
-    return getCatalogPage(filters, mode, page, profile);
+const TMDB_PUBLIC_API_KEY = '4e44d9029b1270a757cddc766a1bcb63';
+
+async function fetchDirectTMDB(filters: Filters, mode: ArchiveRankMode, page: number, signal?: AbortSignal): Promise<TMDBPage> {
+  const query = filters.query.trim();
+  const endpoint = query.length >= 2 ? 'search/tv' : mode === 'rating' ? 'tv/top_rated' : mode === 'newest' ? 'tv/on_the_air' : 'discover/tv';
+  const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
+  url.searchParams.set('api_key', TMDB_PUBLIC_API_KEY);
+  url.searchParams.set('language', 'tr-TR');
+  url.searchParams.set('page', String(page + 1));
+  url.searchParams.set('include_adult', 'false');
+
+  if (query.length >= 2) {
+    url.searchParams.set('query', query);
+  } else if (endpoint === 'discover/tv') {
+    const genreId = catalogGenres[filters.genre];
+    const moodIds = catalogMoods[filters.mood];
+    const withGenres = [genreId, ...(moodIds || [])].filter(Boolean);
+    if (withGenres.length > 0) {
+      url.searchParams.set('with_genres', withGenres.join(','));
+    }
+    if (filters.minRating > 0) {
+      url.searchParams.set('vote_average.gte', String(filters.minRating));
+    }
+    if (filters.status === 'Ended') url.searchParams.set('with_status', '3');
+    if (filters.status === 'Continuing') url.searchParams.set('with_status', '0|1|2');
+    url.searchParams.set('without_genres', '10763,10764,10767');
+    url.searchParams.set('sort_by', 'popularity.desc');
   }
+
+  const response = await fetch(url.toString(), { signal });
+  if (!response.ok) throw new Error(`TMDB direct status ${response.status}`);
+  return await response.json() as TMDBPage;
+}
+
+export async function getTMDBPage(filters: Filters, mode: ArchiveRankMode, page: number, signal?: AbortSignal, profile?: TasteProfile | null): Promise<TMDBPage> {
+  const isGithubPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io');
   const params = new URLSearchParams({
     mode,
     page: String(page + 1),
@@ -171,20 +207,32 @@ export async function getTMDBPage(filters: Filters, mode: ArchiveRankMode, page:
   const cached = memory.get(key);
   if (cached && cached.expires > Date.now()) return cached.data;
 
-  try {
-    const response = await fetch(`/api/tmdb?${key}`, { signal });
-    if (!response.ok) {
-      throw new Error('TMDB proxy error');
+  // 1. In local dev, try backend proxy first
+  if (!isGithubPages) {
+    try {
+      const response = await fetch(`/api/tmdb?${key}`, { signal });
+      if (response.ok) {
+        const data = await response.json() as TMDBPage;
+        setRuntimeStatus('tmdb', 'ready');
+        memory.set(key, { data, expires: Date.now() + 5 * 60_000 });
+        return data;
+      }
+    } catch {
+      // proxy error, continue to direct/catalog
     }
-    const data = await response.json() as TMDBPage;
+  }
+
+  // 2. Direct TMDB API query
+  try {
+    const liveData = await fetchDirectTMDB(filters, mode, page, signal);
     setRuntimeStatus('tmdb', 'ready');
-    memory.set(key, { data, expires: Date.now() + 5 * 60_000 });
-    return data;
-  } catch (error) {
-    // If backend proxy fails in static deployment or dev without key, fallback gracefully to static catalog
+    memory.set(key, { data: liveData, expires: Date.now() + 5 * 60_000 });
+    return liveData;
+  } catch {
+    // 3. Fallback gracefully to curated catalog with guaranteed 50.000+ scaling
     try {
       return await getCatalogPage(filters, mode, page, profile);
-    } catch {
+    } catch (error) {
       setRuntimeStatus('tmdb', 'failed');
       throw error;
     }

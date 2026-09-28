@@ -54,7 +54,7 @@ export function HeroTerminal({ spotlight, searchItems, query, setQuery, mood, on
           <div className="engine-mood-row"><span>Hızlı rota</span><MoodChips active={mood} onPick={onMood} /></div>
         </motion.div>
 
-        <motion.aside className="engine-terminal-stage" aria-label="Yapım önizlemesi" initial={reduceMotion ? false : { opacity: 0, y: 28, rotateY: -4 }} animate={{ opacity: 1, y: 0, rotateY: 0 }} transition={{ duration: .62, delay: .1, ease: 'easeOut' }}>
+        <motion.aside className="engine-terminal-stage" aria-label="Yapım önizlemesi" initial={reduceMotion ? false : { opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .5, delay: .1, ease: 'easeOut' }}>
           <div className="terminal-show-art" style={{ backgroundImage: `url(${preview.backdropUrl})` }} aria-hidden="true" />
           <div className="dossier-index"><span>01</span><i/><span>GÜNÜN SEÇKİSİ</span></div>
           <div className="hero-dossier-head"><img src={preview.posterUrl} alt={`${preview.title} posteri`} loading="eager"/><div><p><Stars size={13}/> SÉRA YAPIM DOSYASI</p><h2>{preview.title}</h2><span>{preview.releaseYear} · {preview.seasonsCount} sezon · {preview.genres.slice(0, 2).join(' / ')}</span></div></div>

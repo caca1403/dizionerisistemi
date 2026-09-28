@@ -41,7 +41,7 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
   const moods = catalogMoods[filters.mood];
 
   // 1. Fast lightweight raw filter
-  let candidates = catalog.filter(item => {
+  const candidates = catalog.filter(item => {
     const ids = item.genre_ids || [];
     return (item.vote_average || 0) >= filters.minRating
       && (!genre || ids.includes(genre))
@@ -51,13 +51,16 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
       && (!query || `${item.name || ''} ${item.original_name || ''} ${item.overview || ''}`.toLocaleLowerCase('tr-TR').includes(query));
   });
 
-  // Limit pool size for heavy scoring to keep UI at 60fps
-  if (candidates.length > 1000) {
-    candidates = candidates.sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 1000);
+  const totalFilteredCount = candidates.length;
+
+  // Pool for fine scoring
+  let pool = candidates;
+  if (pool.length > 2500) {
+    pool = pool.sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 2500);
   }
 
   // 2. Map & Precompute personal score ONCE per candidate
-  const scoredItems = candidates.map(item => {
+  const scoredItems = pool.map(item => {
     const mapped = mapTMDB(item, filters.platform);
     if (!mapped) return null;
     if (mapped.emotionProfile.pacing < filters.pacing[0] || mapped.emotionProfile.pacing > filters.pacing[1]) return null;
@@ -85,7 +88,7 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
   if (catalogOrderCache.size >= 8) catalogOrderCache.delete(catalogOrderCache.keys().next().value!);
   catalogOrderCache.set(orderKey, ordered);
   setRuntimeStatus('tmdb', 'ready');
-  return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: ordered.length, total_pages: Math.ceil(ordered.length / 20), configured: true };
+  return { results: ordered.slice(page * 20, (page + 1) * 20), total_results: totalFilteredCount, total_pages: Math.ceil(totalFilteredCount / 20), configured: true };
 }
 type TMDBDetails = TMDBResult & {
   status?: string;

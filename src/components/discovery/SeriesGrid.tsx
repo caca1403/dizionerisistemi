@@ -81,11 +81,12 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
       </div>
       <div className="archive-heading-actions">
         <span className="result-count">
-          {loading && !items.length ? 'Arşiv hazırlanıyor…' : `${items.length} / ${total > 0 ? total : items.length} yapım`}
+          {loading && !items.length
+            ? 'Arşiv taranıyor…'
+            : total > 0
+              ? `${items.length} / ${total.toLocaleString('tr-TR')} yapım listelendi`
+              : `${items.length} yapım listelendi`}
         </span>
-        <a href="#engine-methodology" className="archive-jump-btn" title="Sayfanın altındaki metodoloji ve sık sorulan sorulara atla">
-          Alt Bölümlere İn ↓
-        </a>
       </div>
     </div>
     <div ref={scrollRef} className="archive-scroll-region" aria-label="Dizi arşivi" tabIndex={0} data-lenis-prevent>

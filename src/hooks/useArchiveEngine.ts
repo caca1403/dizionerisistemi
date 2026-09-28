@@ -125,7 +125,7 @@ export function useArchiveEngine(filters: Filters, profile: TasteProfile | null,
     // Rota tek bir duyguya indirgenmez. TMDB'den geniş havuz alınır; çoklu
     // ruh hâli, referans ve kaçınma sinyalleri yerel kişisel skorda uygulanır.
     const routedFilters = profile ? { ...filters, mood: filters.mood === 'Tümü' ? 'Tümü' as const : filters.mood, genre: filters.genre, platform: filters.platform } : filters;
-    const requestPage = (requestedPage: number, attempt = 0): Promise<Awaited<ReturnType<typeof getTMDBPage>>> => getTMDBPage(routedFilters, mode, requestedPage, controller.signal).catch(error => {
+    const requestPage = (requestedPage: number, attempt = 0): Promise<Awaited<ReturnType<typeof getTMDBPage>>> => getTMDBPage(routedFilters, mode, requestedPage, controller.signal, profile).catch(error => {
       if (attempt < 1 && !controller.signal.aborted) return new Promise((resolve, reject) => window.setTimeout(() => requestPage(requestedPage, attempt + 1).then(resolve).catch(reject), 900));
       throw error;
     });

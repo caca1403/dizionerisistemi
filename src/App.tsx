@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Compass } from 'lucide-react';
 import { series } from './data/mockSeries';
-import { filterSeries } from './lib/recommend';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useArchiveEngine } from './hooks/useArchiveEngine';
 import type { ArchiveRankMode, CustomList, Filters, MoodTag, TasteProfile, TVSeries, WatchlistItem, WatchState } from './types';
@@ -84,27 +83,15 @@ export default function App() {
   const filterArchive = useArchiveEngine(filterFilters, tasteProfile, rankMode, filterPage, Boolean(tasteProfile));
   useEffect(() => { const timeout = window.setTimeout(() => { setFilterPage(0); setFilters(current => ({ ...current, query: searchInput.trim() })); }, 220); return () => window.clearTimeout(timeout); }, [searchInput]);
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(null), 3000); return () => window.clearTimeout(timeout); }, [toast]);
-  const mergeRanked = (primary: TVSeries[], fallback: TVSeries[]) => {
-    const map = new Map<string, TVSeries>();
-    for (const item of fallback) map.set(item.id, item);
-    for (const item of primary) map.set(item.id, item);
-    return Array.from(map.values()).sort((left, right) => right.matchScore - left.matchScore);
-  };
   const routeResults = useMemo(() => {
     if (!tasteProfile) return [];
-    if (routeReferences.length > 0) {
-      return routeArchive.results;
-    }
-    return mergeRanked(routeArchive.results, filterSeries(series, routeFilters, tasteProfile));
-  }, [routeArchive.results, routeFilters, tasteProfile, routeReferences]);
+    return routeArchive.results;
+  }, [routeArchive.results, tasteProfile]);
   const wordResults = useMemo(() => wordQuery.trim().length >= 2 ? wordArchive.results : [], [wordArchive.results, wordQuery]);
   const filterResults = useMemo(() => {
     if (!tasteProfile) return [];
-    const remote = filterArchive.results;
-    if (remote.length > 0 || filterArchive.sources[0]?.state === 'ready') return remote;
-    const local = filterSeries(series, filterFilters, tasteProfile);
-    return local;
-  }, [filterArchive.results, filterArchive.sources, filterFilters, tasteProfile]);
+    return filterArchive.results;
+  }, [filterArchive.results, tasteProfile]);
   const spotlight = useMemo(() => { const visualArchive = filterArchive.results.filter(item => item.posterUrl && item.backdropUrl); if (!visualArchive.length) return series.find(item => item.id === 'ted-lasso') ?? series[0]; const day = Math.floor(Date.now() / 86_400_000); return visualArchive[day % visualArchive.length]; }, [filterArchive.results]);
   const archivePool = useMemo(() => [...series, ...routeArchive.results, ...wordArchive.results, ...filterArchive.results], [routeArchive.results, wordArchive.results, filterArchive.results]);
   const savedIds = useMemo(() => new Set(watchlist.map(item => item.seriesId)), [watchlist]);

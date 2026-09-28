@@ -59,9 +59,9 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
   return <section className="showcase" id="all-series-archive">
     <div className="section-heading archive-heading">
       <div>
-        <p className="eyebrow"><Sparkles size={13}/> CANLI TMDB KATALOĞU</p>
+        <p className="eyebrow"><Sparkles size={13}/> TMDB DİZİ KATALOĞU</p>
         <h2>Tüm Dizi Arşivi</h2>
-        <p className="archive-subtext">Seçilen filtrelere göre TMDB canlı veritabanında arama ve bağımsız iç akış.</p>
+        <p className="archive-subtext">Seçtiğin rota ve filtrelere göre sıralanan dizi arşivi. Aşağı indikçe devam eder.</p>
       </div>
       <div className="archive-heading-actions">
         <span className="result-count">

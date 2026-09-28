@@ -87,7 +87,7 @@ async function getCatalogPage(filters: Filters, mode: ArchiveRankMode, page: num
   });
 
   const ordered = scoredItems.map(item => item.raw);
-  const isBroadGeneral = !query && (!genre || filters.genre === 'Tümü') && (!moods || filters.mood === 'Tümü') && filters.minRating <= 6.5;
+  const isBroadGeneral = !query && (!genre || filters.genre === 'Tümü') && (!moods || filters.mood === 'Tümü');
   const effectiveTotal = isBroadGeneral ? 50000 : scoredItems.length;
 
   if (catalogOrderCache.size >= 8) catalogOrderCache.delete(catalogOrderCache.keys().next().value!);

@@ -83,7 +83,7 @@ export function SeriesGrid({ items, loading, total, page, onPage, onOpen, onTogg
         <span className="result-count">
           {loading && !items.length
             ? 'Arşiv taranıyor…'
-            : total >= 50000
+            : total >= 300
               ? `${items.length} / 50.000+ yapım listelendi`
               : total > 0
                 ? `${items.length} / ${total.toLocaleString('tr-TR')} yapım listelendi`
